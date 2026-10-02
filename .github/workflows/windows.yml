@@ -38,6 +38,8 @@ jobs:
       - run: npm test
       - run: npm run test:ui
       - run: npm run dist:win -- --publish never
+      - name: Verify packaged Windows icon
+        run: node scripts/verify-windows-icon.cjs
       - name: Package source and checksums
         id: package
         run: node scripts/package-release.cjs

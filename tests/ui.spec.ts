@@ -13,6 +13,13 @@ test.beforeAll(async()=>{
 });
 test.afterAll(async()=>{await app.close();expect(errors).toEqual([]);});
 test('最上段のメニュー・左ペイン開閉・コンパクトなファイル情報',async()=>{
+  const bundledIcon=fs.readFileSync(path.join(root,'assets/icon.png'));
+  const actualIcon=await page.evaluate(()=>window.csv.icon());
+  expect(Buffer.from(actualIcon!.split(',')[1],'base64').subarray(0,8).toString('hex')).toBe('89504e470d0a1a0a');
+  expect(await app.evaluate(({nativeImage},p)=>nativeImage.createFromPath(p).toDataURL(),path.join(root,'assets/icon.png'))).toBe(actualIcon);
+  await expect(page.locator('.workspace-toggle .app-icon')).toBeVisible();
+  expect(await page.locator('.app-icon').evaluate((el:HTMLImageElement)=>({width:el.naturalWidth,height:el.naturalHeight}))).toEqual({width:200,height:200});
+  expect(bundledIcon.subarray(0,8).toString('hex')).toBe('89504e470d0a1a0a');
   await expect(page.locator('.compact-titlebar')).not.toContainText('CSV nyaan Viewer');await expect(page.locator('.subtitle')).toHaveCount(0);await expect(page.locator('.sidebar')).toHaveCount(0);
   for(const label of ['ファイル','検索','移動','ヘルプ','共有','接続'])await expect(page.locator('.menubar').getByRole('button',{name:label,exact:true})).toBeVisible();
   await page.getByLabel('左ペインを開閉').click();await expect(page.locator('.sidebar')).toBeVisible();await page.getByLabel('左ペインを開閉').click();await expect(page.locator('.sidebar')).toHaveCount(0);

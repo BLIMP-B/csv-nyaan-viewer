@@ -1,7 +1,18 @@
 # アプリアイコン
 
-指定のOneDrive / Discord画像は作業環境のアクセス制限（403）で取得できず、配布版への埋め込みは未完了です。元画像の代わりは作成していません。
+ユーザー指定の添付画像を既定アイコンとして同梱しています。
 
-PNGを `assets/icon.png`、同じ画像のWindows ICOを `assets/icon.ico` として配置すると、次回Windowsビルドは実行ファイルにそのアイコンを設定します。
+- `icon-source.jpg`: 添付された元画像（200 × 200）。
+- `icon.png`: 元画像の画素を保持したPNG。ウィンドウ・タスクバー・アプリ左上に表示します。
+- `icon.ico`: Windows実行ファイル用。16 / 24 / 32 / 48 / 64 / 128 / 256 pxを収録し、拡縮には最近傍法を使っています。
+
+ImageMagickで同じ素材を再生成できます。
+
+```sh
+convert assets/icon-source.jpg -strip PNG32:assets/icon.png
+convert assets/icon.png -filter point -define icon:auto-resize=256,128,64,48,32,24,16 assets/icon.ico
+```
+
+WindowsビルドはICOを実行ファイルのリソースに設定します。`node scripts/verify-windows-icon.cjs` は、ビルドした実行ファイルのアイコングループにICOの全画像が含まれることと、アプリのアーカイブにPNGが同梱されることを確認します。GitHub Actionsでも配布ZIPの公開前に実行します。
 
 配布アプリ内では「設定 → アプリアイコンを選択」からPNG / ICOを選べます。ウィンドウ・タスクバーと左上の表示を変更し、次回起動時も保持します。この設定だけでは実行ファイルそのもののアイコンは変更しません。

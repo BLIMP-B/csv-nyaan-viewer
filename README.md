@@ -6,7 +6,7 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.1.1-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.1.2-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
@@ -88,7 +88,7 @@ XLSX / XLS / XLSM / XLSB / XLTX / XLTM / XLT / XLAM / XLA、およびODS / FODS 
 
 ## アプリアイコン
 
-「設定 → アプリアイコンを選択」からPNG / ICOを指定し、ウィンドウ・タスクバー・左上の表示を変更できます。設定は次回起動後も保持します。指定画像の配布ファイルへの埋め込みは、元画像を取得できていないため未完了です。ビルドへの組み込み方法は [アイコン設定](assets/README.md) に記載しています。
+指定された画像を既定アイコンとして、Windows実行ファイル・ウィンドウ・タスクバー・左上の表示に組み込んでいます。「設定 → アプリアイコンを選択」からPNG / ICOを指定して表示を変更でき、設定は次回起動後も保持します。素材とビルド時の確認方法は [アイコン設定](assets/README.md) に記載しています。
 
 ## 変換と結合
 
@@ -142,7 +142,7 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.1-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.2-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 
