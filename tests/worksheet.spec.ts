@@ -38,7 +38,9 @@ test('全シートを下部タブに並べ、クリック・キー・横スク�
   await expect(page.locator('.no-rows')).toHaveText('空のファイルです'); await expect(tabs.getByRole('tab')).toHaveCount(20);
   await sheet(19).press('Home'); await expect(sheet(0)).toHaveAttribute('aria-selected', 'true'); await expect(cell(0, 0)).toHaveText('0001');
   await page.getByLabel('シートタブを右にスクロール', { exact: true }).click(); await expect.poll(() => tabs.evaluate(el => el.scrollLeft)).toBeGreaterThan(100);
-  await expect(sheet(0)).toHaveAttribute('aria-selected', 'true'); await page.getByLabel('シートタブを左にスクロール', { exact: true }).click(); await expect.poll(() => tabs.evaluate(el => el.scrollLeft)).toBe(0);
+  await expect(sheet(0)).toHaveAttribute('aria-selected', 'true'); await page.getByLabel('シートタブを左にスクロール', { exact: true }).click();
+  // Smooth scrolling can stop within one device pixel of zero on Windows.
+  await expect.poll(() => tabs.evaluate(el => el.scrollLeft)).toBeLessThanOrEqual(1); await expect(sheet(0)).toBeInViewport();
   await page.getByRole('button', { name: 'フィルター', exact: true }).click(); await page.getByLabel('条件1の値').fill('0001'); await page.getByRole('button', { name: '適用', exact: true }).click(); await expect(page.locator('.filter-summary')).toBeVisible();
   await page.locator('.column-head[data-head-index="1"] .header-eye-zone').hover(); await page.getByLabel('列Bを非表示', { exact: true }).click(); await expect(cell(0, 1)).toHaveClass(/cell-concealed/);
   await sheet(1).click(); await expect(cell(0, 0)).toHaveText('1'); await expect(cell(0, 1)).not.toHaveClass(/cell-concealed/); await expect(page.locator('.filter-summary')).toHaveCount(0); await expect(page.getByRole('button', { name: 'フィルター', exact: true })).not.toHaveClass(/applied/);
