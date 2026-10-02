@@ -1,22 +1,14 @@
-Windows 10 / 11（x64）向け CSV nyaan Viewer 1.2.2です。
+Windows 10 / 11（x64）向け CSV nyaan Viewer 1.2.3です。
 
-Assetsの `CSV-nyaan-Viewer-1.2.2-Windows-x64.zip` をすべて展開して `CSV nyaan Viewer.exe` を起動してください。Node.jsは不要です。
+Assetsの `CSV-nyaan-Viewer-1.2.3-Windows-x64.zip` をすべて展開して `CSV nyaan Viewer.exe` を起動してください。Node.jsは不要です。
 
-起動直後の案内画面を変更しました。
+- 左サイド下部の「元ファイルを変更しません」と、最上段右側の「読み取り専用」を削除しました。
+- URL入力欄は「接続」とテーマ・設定ボタンの間に配置します。
+- シート切り替えでは、シートごとのフィルター・ソート・非表示・固定列・列幅などを保持し、そのシートに戻った際に復元します。起動時の見出しのバージョンも1.2.3に反映されます。
 
-- キャッチコピー：さっくり分析、にゃーんと解決！
-- 見出し：CSV nyaan Viewerと実際のアプリバージョンを表示。将来の更新時もバージョンが自動で反映されます。
-- 対応ファイル例を次の3行に変更しました。
+画面の配置と表示条件の保持を確認しています。Windowsではコア77件・UI24件の全101件を実行し、アイコンとAuthenticode署名を検証して配布します。
 
-```text
-（よめる）.csv , .md , .txt
-（だいたいよめる）.xlsx , .xl～なんちゃら , .prn , .obs
-（きっとよめる）Googleスプレッドシート(URL) , MicrosoftExcelOnline(URL)
-```
-
-起動画面をライト／ダークで確認しています。Windowsではコア77件・UI24件の全101件を実行し、アイコンとAuthenticode署名を検証して配布します。
-
-v1.2.1の境界でのペイン開閉を含む、読み取り専用閲覧・分析・テーブル管理・各種出力・共有・接続機能を含みます。操作と上限はREADMEを参照してください。
+v1.2.2の起動画面、境界でのペイン開閉、分析・テーブル管理・各種出力・共有・接続機能を含みます。操作と上限はREADMEを参照してください。
 
 検証用の自己署名版です。公開証明書 `test-signing.cer` と検証結果 `SIGNATURE.json` を配布します。以前の証明書を登録している場合は新しい拇印を確認して更新してください。手順は [Windowsコード署名](https://github.com/BLIMP-B/csv-nyaan-viewer/blob/main/docs/code-signing.md) を参照してください。
 

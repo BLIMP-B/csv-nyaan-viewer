@@ -26,8 +26,8 @@ test('最上段のメニュー・左ペイン開閉・コンパクトなファ�
   for(const width of [1000,1440]){
     await app.evaluate(({BrowserWindow},width)=>BrowserWindow.getAllWindows()[0].setContentSize(width,940),width);
     await expect.poll(async()=>(await page.locator('.compact-titlebar').boundingBox())!.width).toBe(width);
-    const connect=(await page.locator('.menubar').getByRole('button',{name:'接続',exact:true}).boundingBox())!,url=(await page.locator('.online-bar').boundingBox())!,readonly=(await page.locator('.readonly').boundingBox())!,header=(await page.locator('.compact-titlebar').boundingBox())!;
-    expect(url.x).toBeGreaterThanOrEqual(connect.x+connect.width);expect(url.x+url.width).toBeLessThanOrEqual(readonly.x);expect(url.width).toBeGreaterThan(100);expect(url.y).toBeGreaterThanOrEqual(header.y);expect(url.y+url.height).toBeLessThanOrEqual(header.y+header.height);expect(header.height).toBe(34);
+    const connect=(await page.locator('.menubar').getByRole('button',{name:'接続',exact:true}).boundingBox())!,url=(await page.locator('.online-bar').boundingBox())!,controls=(await page.locator('.titlebar-right').boundingBox())!,header=(await page.locator('.compact-titlebar').boundingBox())!;
+    expect(url.x).toBeGreaterThanOrEqual(connect.x+connect.width);expect(url.x+url.width).toBeLessThanOrEqual(controls.x);expect(url.width).toBeGreaterThan(100);expect(url.y).toBeGreaterThanOrEqual(header.y);expect(url.y+url.height).toBeLessThanOrEqual(header.y+header.height);expect(header.height).toBe(34);
   }
   await page.getByLabel('左ペインを開閉').click();await expect(page.locator('.sidebar')).toBeVisible();await page.getByLabel('左ペインを開閉').click();await expect(page.locator('.sidebar')).toHaveCount(0);
   expect((await page.locator('.document-heading').boundingBox())!.height).toBeLessThanOrEqual(40);
