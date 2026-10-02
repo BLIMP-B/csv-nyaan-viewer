@@ -10,7 +10,7 @@ import {analysisDocument,analysisLimit,variableLimit,statisticRows} from './anal
 import {formatNumber as fmt,type AnalysisResult,type AnalysisSource,type SavedTable,type AnalysisOptions} from './analysis-types';
 type Scope='sheet'|'ranges'|'all'|'tables';
 function DetailChart({model,onError}:{model:PlotModel;onError(text:string):void}) {const theme=useImageExportTheme();return <div className="individual-analysis-chart"><AnalysisChart model={model}/><button onClick={()=>window.csv.savePlot(plotPNG(model,undefined,0,theme),'png',plotFilename(model)).catch(e=>onError(String(e)))}><Download size={13}/>PNG保存</button></div>;}
-export function AnalysisPanel({tab,tabs,tables,all}:{tab?:Tab;tabs:Tab[];tables:SavedTable[];all:boolean}){
+export function AnalysisPanel({tab,tabs,tables,all,enabled=true}:{tab?:Tab;tabs:Tab[];tables:SavedTable[];all:boolean;enabled?:boolean}){
   const exportTheme=useImageExportTheme();
   const [report,setResult]=useState<AnalysisResult|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[run,setRun]=useState(0),[sheet,setSheet]=useState(''),[scope,setScope]=useState<Scope>('sheet'),[tableIds,setTableIds]=useState<string[]>(tables.map(t=>t.id)),[executedSources,setExecutedSources]=useState<AnalysisSource[]>([]),[exporting,setExporting]=useState(''),[group,setGroup]=useState(''),[decisionsOpen,setDecisionsOpen]=useState(false),[options,setOptions]=useState<AnalysisOptions>({autoExclude:true,mergeSameName:true});
   const knownTables=useRef(tables.map(t=>t.id)),pcaState=useRef<PcaViewState|undefined>(undefined),previousInput=useRef('');
@@ -23,13 +23,14 @@ export function AnalysisPanel({tab,tabs,tables,all}:{tab?:Tab;tabs:Tab[];tables:
   useEffect(()=>{setOptions({autoExclude:true,mergeSameName:true});setGroup('');},[all,all&&scope!=='sheet'?null:tab?.meta.id]);
   useEffect(()=>{setResult(null);setSheet('');pcaState.current=undefined;},[all,scope,all&&scope!=='sheet'?null:tab?.meta.id]);
   useEffect(()=>{
+    if(!enabled)return;
     let alive=true;setBusy(false);setError('');if(previousInput.current!==baseQuery){previousInput.current=baseQuery;setResult(null);}
     const input=JSON.parse(query);if(!all&&!tab?.selection)return;
     if(all&&scope==='all'&&!executedSources.length)return;
     if(!input.id&&!input.sources?.length)return;
     setBusy(true);const timer=setTimeout(()=>{const task=input.sources?window.csv.analyzeMany(input.sources,input.options):window.csv.request<AnalysisResult>(input.id,input.method,input.args);task.then(value=>{if(alive){pcaState.current=undefined;setResult(value);}}).catch(e=>{if(alive)setError(String(e));}).finally(()=>{if(alive)setBusy(false);});},250);
     return()=>{alive=false;clearTimeout(timer);};
-  },[query,all,scope,run]);
+  },[query,all,scope,run,enabled]);
   const sheetResult=useMemo(()=>report?.sheets?.find(s=>s.name===(sheet||tab?.meta.sheet))?.result||report?.sheets?.[0]?.result||report,[report,sheet,tab?.meta.sheet]);
   const result=sheetResult?.groups?.find(g=>g.name===group)?.result||sheetResult?.groups?.[0]?.result||sheetResult;
   function execute(){setError('');if(all&&scope==='all')setExecutedSources(allSources(tabs));setRun(r=>r+1);}

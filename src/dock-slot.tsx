@@ -10,7 +10,7 @@ function DotGrip({ vertical = false }: { vertical?: boolean }) {
   </svg>;
 }
 
-export function DockSlot({ position, size = {}, onResize, children, controls }: { position: Position; size?: PaneSize; onResize(size: PaneSize): void; children: React.ReactNode; controls?: React.ReactNode }) {
+export function DockSlot({ position, size = {}, onResize, children, controls, className='', boundaryLabel, onDragOver, onDrop }: { position: Position; size?: PaneSize; onResize(size: PaneSize): void; children: React.ReactNode; controls?: React.ReactNode;className?:string;boundaryLabel?:string;onDragOver?:React.DragEventHandler<HTMLDivElement>;onDrop?:React.DragEventHandler<HTMLDivElement> }) {
   const ref = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<PaneSize | null>(null);
   const [limits, setLimits] = useState({ width: 1600, height: 600 });
@@ -20,7 +20,7 @@ export function DockSlot({ position, size = {}, onResize, children, controls }: 
   const heightEdge = position === 'bottom' ? 'top' : 'bottom';
   const label = names[position] + 'ペイン';
   const current = draft || size;
-  const minWidth = Math.min(horizontal ? 360 : 280, limits.width);
+  const minWidth = Math.min(horizontal ? 360 : className.includes('sidebar')?190:280, limits.width);
   const minHeight = Math.min(180, limits.height);
   const clampWidth = (value: number) => Math.max(minWidth, Math.min(limits.width, value));
   const clampHeight = (value: number) => Math.max(minHeight, Math.min(limits.height, value));
@@ -94,13 +94,13 @@ export function DockSlot({ position, size = {}, onResize, children, controls }: 
   const events = (direction: Direction, wEdge: 'left'|'right' = widthEdge, hEdge: 'top'|'bottom' = heightEdge) => ({ onPointerDown: (event: React.PointerEvent<HTMLElement>) => begin(direction, event, wEdge, hEdge), onPointerMove: move, onPointerUp: finish, onPointerCancel: finish, onLostPointerCapture: finish, onDoubleClick: () => reset(direction), onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => keyboard(direction, event, wEdge, hEdge) });
   const width = current.width === undefined ? horizontal ? '100%' : clampWidth(310) : clampWidth(current.width);
   const height = current.height === undefined ? horizontal ? clampHeight(300) : '100%' : clampHeight(current.height);
-  return <div ref={ref} className={`dock-slot ${position}${draft ? ' resizing' : ''}`} style={{ width, height }}>
+  return <div ref={ref} className={`dock-slot ${position}${draft ? ' resizing' : ''} ${className}`} style={{ width, height }} onDragOver={onDragOver} onDrop={onDrop}>
     {children}
     {controls}
     {(['top','bottom'] as const).map(edge=><div key={edge} className={`dock-grip grip-height edge-${edge}`} role="separator" tabIndex={0} aria-label={`${label}の高さを調整（${edge==='top'?'上':'下'}）`} aria-orientation="horizontal" aria-valuemin={minHeight} aria-valuemax={limits.height} aria-valuenow={typeof height==='number'?height:limits.height} title="上下にドラッグして高さを調整" {...events('height',widthEdge,edge)}><DotGrip/></div>)}
     {(['left','right'] as const).map(edge=><div key={edge} className={`dock-grip grip-width edge-${edge}`} role="separator" tabIndex={0} aria-label={`${label}の幅を調整（${edge==='left'?'左':'右'}）`} aria-orientation="vertical" aria-valuemin={minWidth} aria-valuemax={limits.width} aria-valuenow={typeof width==='number'?width:limits.width} title="左右にドラッグして幅を調整" {...events('width',edge,heightEdge)}><DotGrip vertical/></div>)}
     {([['top','left','左上'],['bottom','right','右下']] as const).map(([h,w,name])=><button key={name} className={`dock-grip grip-both edge-${h} edge-${w}`} aria-label={`${label}の幅と高さを調整（${name}）`} title="斜めにドラッグして幅と高さを調整" {...events('both',w,h)}><DotGrip vertical/></button>)}
-    <div role="separator" tabIndex={0} aria-label={`${label}とデータの境界`} aria-orientation={horizontal?'horizontal':'vertical'} className={`dock-boundary edge-${horizontal?heightEdge:widthEdge} ${horizontal?'boundary-horizontal':'boundary-vertical'}`} {...events(horizontal?'height':'width')}/>
+    <div role="separator" tabIndex={0} aria-label={boundaryLabel||`${label}とデータの境界`} aria-orientation={horizontal?'horizontal':'vertical'} className={`dock-boundary edge-${horizontal?heightEdge:widthEdge} ${horizontal?'boundary-horizontal':'boundary-vertical'}`} {...events(horizontal?'height':'width')}/>
 
   </div>;
 }

@@ -6,7 +6,7 @@ export interface Sort { column: number; direction: string; mode: string }
 export interface Selection { row0: number; row1: number; col0: number; col1: number }
 export interface Tab { sheetViews?:Record<string,import('./analysis-types').SheetView>; selectionExplicit?:boolean; meta: Meta; filters: Filter[]; sorts: Sort[]; hidden: number[]; hiddenRows?:number[]; excludedRows?:number[]; deletedColumns?:number[]; columnOrder?:number[]; columnFilter?:number[]; frozen: number; widths: Record<number, number>; selection: Selection | null; ranges?: Selection[]; scrollTop: number; scrollLeft: number; preview: boolean }
 export interface PaneSize { width?: number; height?: number }
-export interface Preferences { imageExportTheme?:import('./export-theme').ImageExportTheme; theme?: string; fontSize?: number; fontFamily?: string; accent?: string; previewPosition?: string; mergePosition?: string; dockSizes?: Partial<Record<'top'|'bottom'|'left'|'right', PaneSize>>; sidebarWidth?:number; recent?: string[] }
+export interface Preferences { dockLayout?:import('./dock-state').DockLayout; imageExportTheme?:import('./export-theme').ImageExportTheme; theme?: string; fontSize?: number; fontFamily?: string; accent?: string; previewPosition?: string; mergePosition?: string; dockSizes?: Partial<Record<'top'|'bottom'|'left'|'right', PaneSize>>; sidebarWidth?:number; recent?: string[] }
 declare global { interface Window { csv: {
   icon():Promise<string|null>;
   chooseIcon():Promise<string|null>;

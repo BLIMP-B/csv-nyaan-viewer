@@ -1,6 +1,6 @@
 {
   "name": "csv-nyaan-viewer",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "Windows用の非破壊CSVビューワー",
   "private": true,
   "author": "CSV nyaan Viewer",
