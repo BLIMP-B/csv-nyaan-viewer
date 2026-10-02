@@ -73,7 +73,7 @@ function App() {
   const selectedTab = tabs.find(t => t.meta.id === activeId), tabRef = useRef<Tab | undefined>(selectedTab); tabRef.current = selectedTab;
   const [dockLayout,setDockLayout]=useDocking(setError);
   const sidebar=dockLayout.groups.left.length?dockLayout.groups.left.some(id=>dockLayout.open.includes(id)):dockLayout.open.includes('workspace');
-  function setSidebar(value:boolean|((open:boolean)=>boolean)){setDockLayout(current=>{const ids=current.groups.left.length?current.groups.left:['workspace'] as PaneId[],opened=ids.some(id=>current.open.includes(id)),next=typeof value==='function'?value(opened):value;if(next)return showPane(current,current.active.left||ids[0]);return {...current,open:current.open.filter(id=>!ids.includes(id))};});}
+  function setSidebar(value:boolean|((open:boolean)=>boolean)){setDockLayout(current=>{const position=current.groups.left.length?'left':panePosition(current,'workspace'),ids=current.groups[position],opened=ids.some(id=>current.open.includes(id)),next=typeof value==='function'?value(opened):value,id=current.active[position]||ids[0];return next?showPane(current,id):closePane(current,id);});}
   function setPreviewOpen(value:boolean){setDockLayout(current=>value?showPane(current,'chart',false):closePane(current,'chart'));}
   function setMergeOpen(value:boolean){setDockLayout(current=>value?showPane(current,'merge'):closePane(current,'merge'));}
   const toggleDock=(id:PaneId)=>setDockLayout(current=>togglePane(current,id));

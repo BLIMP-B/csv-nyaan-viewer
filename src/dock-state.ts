@@ -23,24 +23,26 @@ export function normalizeDockLayout(value:unknown,prefs:Preferences={}):DockLayo
   for(const p of POSITIONS)for(const id of Array.isArray(input.groups?.[p])?input.groups![p]:[])if(isPane(id)&&!seen.has(id)){groups[p].push(id);seen.add(id);}
   for(const p of POSITIONS)for(const id of fallback.groups[p])if(!seen.has(id)){groups[p].push(id);seen.add(id);}
   const open=Array.isArray(input.open)?[...new Set(input.open.filter(isPane))]:[];
+  // Older layouts could leave a closed tab floating beside an expanded group.
+  // Visibility now belongs to the entire edge, while the selected tab is retained.
+  for(const p of POSITIONS)if(groups[p].some(id=>open.includes(id)))for(const id of groups[p])if(!open.includes(id))open.push(id);
   const active:DockLayout['active']={};for(const p of POSITIONS){const id=input.active?.[p];active[p]=id&&groups[p].includes(id)?id:groups[p].find(id=>open.includes(id))||groups[p][0];}
   return {groups,active,open};
 }
 export const panePosition=(layout:DockLayout,id:PaneId):DockPosition=>POSITIONS.find(p=>layout.groups[p].includes(id))!;
 export function showPane(layout:DockLayout,id:PaneId,focus=true):DockLayout {
-  const position=panePosition(layout,id),open=layout.open.includes(id)?layout.open:[...layout.open,id];
-  return {...layout,open,active:focus||!layout.active[position]||!open.includes(layout.active[position]!)?{...layout.active,[position]:id}:layout.active};
+  const position=panePosition(layout,id),ids=layout.groups[position],wasOpen=ids.some(p=>layout.open.includes(p)),open=[...layout.open,...ids.filter(p=>!layout.open.includes(p))];
+  return {...layout,open,active:focus||!layout.active[position]||!wasOpen?{...layout.active,[position]:id}:layout.active};
 }
 export function closePane(layout:DockLayout,id:PaneId):DockLayout {
-  const open=layout.open.filter(p=>p!==id),position=panePosition(layout,id),active={...layout.active};
-  if(active[position]===id)active[position]=layout.groups[position].find(p=>open.includes(p))||id;
-  return {...layout,open,active};
+  const ids=layout.groups[panePosition(layout,id)];return {...layout,open:layout.open.filter(p=>!ids.includes(p))};
 }
 export const togglePane=(layout:DockLayout,id:PaneId)=>layout.open.includes(id)&&layout.active[panePosition(layout,id)]===id?closePane(layout,id):showPane(layout,id);
+export const toggleGroup=(layout:DockLayout,id:PaneId)=>layout.groups[panePosition(layout,id)].some(p=>layout.open.includes(p))?closePane(layout,id):showPane(layout,id);
 export function movePane(layout:DockLayout,id:PaneId,position:DockPosition,before?:PaneId):DockLayout {
   if(before===id&&panePosition(layout,id)===position)return showPane(layout,id);
   const source=panePosition(layout,id),groups={...layout.groups};for(const p of POSITIONS)groups[p]=groups[p].filter(pane=>pane!==id);
   const index=before?groups[position].indexOf(before):-1;groups[position].splice(index<0?groups[position].length:index,0,id);
   const active={...layout.active,[position]:id};if(source!==position&&active[source]===id)active[source]=groups[source].find(p=>layout.open.includes(p))||groups[source][0];
-  return {...layout,groups,active,open:layout.open.includes(id)?layout.open:[...layout.open,id]};
+  return {...layout,groups,active,open:[...layout.open,...groups[position].filter(p=>!layout.open.includes(p))]};
 }

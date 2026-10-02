@@ -1,4 +1,4 @@
-/* Every utility pane belongs to a movable tab group. */
+/* Each edge owns one boundary tab strip and one shared expanded state. */
 .docking-editor{grid-area:center;position:relative;display:flex;min-width:0;min-height:0;overflow:hidden}
 .docking-editor.has-rail-left{padding-left:34px}.docking-editor.has-rail-right{padding-right:34px}
 .docking-editor.has-rail-top{padding-top:30px}.docking-editor.has-rail-bottom{padding-bottom:30px}
@@ -7,29 +7,30 @@
 .workspace-content{display:flex;flex-direction:column;flex:1;min-height:0;padding:10px 8px;background:var(--surface)}
 .pane-content>.analysis-panel{flex:1;min-height:0;overflow:auto;padding:8px;background:var(--surface)}
 .pane-content:has(>.chart-area){overflow:auto}.pane-content>.chart-area{flex:1 0 150px;min-height:150px}
-.dock-tabs{display:flex;flex-shrink:0;min-height:40px;overflow:auto;border-bottom:1px solid var(--line);background:var(--surface2)}
-.dock-tab{display:flex;flex:1;min-width:0;border-right:1px solid var(--line);position:relative;border-bottom:2px solid transparent}
-.dock-tab.selected{border-bottom-color:var(--accent-text);background:var(--bg)}
-.dock-tab>button[role=tab]{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px;border:0;border-radius:0;padding:5px 3px;font-size:10px;line-height:1.25;white-space:normal;overflow-wrap:anywhere;background:transparent;color:var(--text);cursor:grab}
-.dock-tab.selected>button[role=tab]{color:var(--accent-text);font-weight:600}
-.dock-tab small{font-size:9px;color:var(--muted);line-height:1.2}
-.dock-tab.selected small{color:inherit}
-.dock-tab-close{align-self:center;flex-shrink:0;padding:2px}
-.dock-tabs.many-tabs .dock-tab{flex:0 0 115px}
-.dock-tabs.many-tabs button[role=tab]{white-space:nowrap;overflow:hidden}
-.dock-tabs.many-tabs button[role=tab]>span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.dock-rail{position:absolute;z-index:20;display:flex;gap:3px;max-width:90%;max-height:90%;overflow:auto;padding:2px;background:var(--surface2);border:1px solid var(--line);border-radius:5px}
-.rail-left,.rail-right{top:50%;transform:translateY(-50%);flex-direction:column;max-width:32px}
-.rail-left{left:0}.rail-right{right:0}
-.rail-top,.rail-bottom{left:50%;transform:translateX(-50%)}
-.rail-top{top:0}.rail-bottom{bottom:0}
-.dock-rail .tab-reopen{position:static;transform:none;margin:0;max-height:110px;max-width:180px;font-size:10px;padding:5px;box-shadow:none;flex-shrink:0;cursor:grab}
-.dock-rail .tab-reopen span{max-height:85px}
-.pane-boundary-button[draggable=true]{cursor:grab}
-.docking-layout>.dock-slot>.close-top,.docking-layout>.dock-slot>.close-bottom{left:calc(50% - 90px);max-width:110px}
+.dock-rail{position:absolute;z-index:20;display:grid;gap:0;background:var(--surface2);min-width:0;min-height:0}
+.rail-section{display:flex;align-items:stretch;gap:3px;min-width:0;min-height:0;overflow:auto;scrollbar-width:none;padding:0 1px}
+.rail-section::-webkit-scrollbar{display:none}.rail-section:first-child{justify-content:safe flex-end}.rail-section:last-child{justify-content:flex-start}
+.rail-left,.rail-right{top:9px;bottom:9px;width:28px;grid-template-rows:minmax(0,1fr) 26px minmax(0,1fr)}
+.rail-left{left:0}.rail-right{right:0}.rail-left.expanded{left:auto;right:0}.rail-right.expanded{right:auto;left:0}
+.rail-left .rail-section,.rail-right .rail-section{flex-direction:column;padding:1px 0}
+.rail-top,.rail-bottom{left:9px;right:9px;height:28px;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr)}
+.rail-top{top:0}.rail-bottom{bottom:0}.rail-top.expanded{top:auto;bottom:0}.rail-bottom.expanded{bottom:auto;top:0}
+.dock-edge-tab,.boundary-toggle{display:flex;flex:0 1 auto;min-width:28px;min-height:26px;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:3px 5px;color:var(--text);font-size:10px;gap:0;box-shadow:none;touch-action:none}
+.dock-edge-tab.selected{border-color:var(--accent-text);background:var(--accent-soft);color:var(--accent-text);font-weight:600}
+.dock-edge-tab:hover,.boundary-toggle:hover{background:var(--hover)}.dock-edge-tab:focus-visible,.boundary-toggle:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px}
+.boundary-toggle{flex:0 0 28px;padding:0;cursor:pointer}.boundary-tab-label{cursor:grab;min-width:0;min-height:0;white-space:nowrap;overflow:hidden}
+.boundary-tab-label span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.boundary-tab-label small{font-size:9px}
+.rail-left .dock-edge-tab,.rail-right .dock-edge-tab{writing-mode:vertical-rl;min-height:26px;max-height:150px;min-width:0;width:28px;padding:5px 3px}
+.rail-left .boundary-toggle,.rail-right .boundary-toggle{min-width:0;width:28px;min-height:28px}
+.rail-left .boundary-tab-label span,.rail-right .boundary-tab-label span{max-height:140px}
+.popout-group{position:relative;display:flex;flex:1;min-width:0;min-height:0;padding:9px;background:var(--surface2)}
+.popout-group.top{padding-bottom:34px}.popout-group.bottom{padding-top:34px}.popout-group.left{padding-right:34px}.popout-group.right{padding-left:34px}
 .dock-drop-zones{position:absolute;inset:0;z-index:45;pointer-events:none}
 .dock-drop-zone{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--accent-text);background:var(--accent-soft);border:2px dashed var(--accent-text);border-radius:6px;box-shadow:0 3px 14px #0002}
 .drop-top,.drop-bottom{left:25%;right:25%;height:54px}.drop-top{top:5px}.drop-bottom{bottom:5px}
 .drop-left,.drop-right{top:25%;bottom:25%;width:72px;writing-mode:vertical-rl}.drop-left{left:5px}.drop-right{right:5px}
 .dock-drop-zone.targeted,.dock-slot.drop-target{box-shadow:inset 0 0 0 3px var(--accent-text)}
-.pane-dragging .dock-tabs{outline:1px dashed var(--accent-text);outline-offset:-1px}
+.pane-dragging .dock-rail{outline:1px dashed var(--accent-text);outline-offset:-1px}
+/* Empty strip space leaves the boundary draggable; controls keep their own hits. */
+.dock-rail{pointer-events:none}.dock-edge-tab,.boundary-toggle{pointer-events:auto}
+.docking-layout .dock-boundary{z-index:22}.docking-layout .dock-grip{z-index:23}

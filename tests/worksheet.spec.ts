@@ -55,8 +55,8 @@ test('ファイル別のシート一覧、単一シートとCSV、全テーマ�
     await expect(page.locator('.document-heading h1')).toContainText(name); await expect(cell(0, 0)).toHaveText('項目');
   }
   await openWorkbook('Single.xlsx', ['1枚だけ']); await expect(page.getByRole('tablist', { name: 'ワークシート' })).toHaveCount(0);
-  await openWorkbook('Other.xlsx', ['営業 & 開発（Q1）', '集計']); await expect(page.getByRole('tablist').getByRole('tab')).toHaveText(['営業 & 開発（Q1）', '集計']);
-  await page.locator('.tabbar').getByRole('button', { name: 'Many.xlsx', exact: true }).click(); await expect(page.getByRole('tablist').getByRole('tab')).toHaveText(names); await expect(cell(0, 0)).toHaveText('0001');
+  await openWorkbook('Other.xlsx', ['営業 & 開発（Q1）', '集計']); await expect(page.getByRole('tablist', { name: 'ワークシート' }).getByRole('tab')).toHaveText(['営業 & 開発（Q1）', '集計']);
+  await page.locator('.tabbar').getByRole('button', { name: 'Many.xlsx', exact: true }).click(); await expect(page.getByRole('tablist', { name: 'ワークシート' }).getByRole('tab')).toHaveText(names); await expect(cell(0, 0)).toHaveText('0001');
   for (const theme of ['light', 'dark']) {
     for (const accent of ['#0f6cbd', '#107c41', '#5b5fc7']) {
       await page.getByLabel('設定', { exact: true }).click(); await page.getByLabel('カラープロファイル').selectOption(theme); await page.getByLabel('アクセントカラー').selectOption(accent); await page.getByRole('button', { name: '完了', exact: true }).click();

@@ -9,7 +9,7 @@ import { recommendChart } from './chart-recommendation';
 import { X, ExternalLink, Download, Plus, ArrowUp, ArrowDown, Combine, BarChart3, Undo2, MoreHorizontal, Pencil, Trash2, FileText, Code, Eye } from 'lucide-react';
 import { chartData, mergeTables, blockMarkdown, documentMarkdown, type TableData, type MergeBlock } from './data';
 export type Position = 'top' | 'bottom' | 'left' | 'right';
-export function DockPane({ title, tools, position, onPosition, onClose, children }: { title: string; tools?:React.ReactNode; position: Position; onPosition(p: Position): void; onClose():void; children: React.ReactNode }) {
+export function DockPane({ title, tools, boundary, position, onPosition, onClose, children }: { title: string; tools?:React.ReactNode; boundary?:React.ReactNode; position: Position; onPosition(p: Position): void; onClose():void; children: React.ReactNode }) {
   const [popup, setPopup] = useState<Window | null>(null), [mount, setMount] = useState<HTMLElement | null>(null);
   const restore = () => { popup?.close(); setPopup(null); setMount(null); };
   function popOut() {
@@ -25,7 +25,7 @@ export function DockPane({ title, tools, position, onPosition, onClose, children
   useEffect(() => () => { popup?.close(); }, [popup]);
   useEffect(()=>{if(popup)popup.document.title=title+' — CSV nyaan Viewer';},[popup,title]);
   const content = <section className="dock-pane"><header className="pane-heading"><strong>{title}</strong>{tools}<select aria-label={`${title}の位置`} value={position} onChange={e => {restore();onPosition(e.target.value as Position);}}>{[['bottom','下'],['top','上'],['left','左'],['right','右']].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>{popup ? <button className="icon-btn" title="メインウィンドウに戻す" aria-label="メインウィンドウに戻す" onClick={restore}><Undo2 size={14}/></button> : <button className="icon-btn" title="別ウィンドウにする" aria-label={`${title}を別ウィンドウにする`} onClick={popOut}><ExternalLink size={14}/></button>}<button className="icon-btn" title="ペインを閉じる" aria-label={`${title}を閉じる`} onClick={() => { restore();onClose(); }}><X size={15}/></button></header>{children}</section>;
-  return mount ? <><div className="popout-placeholder"><ExternalLink size={17}/><span>{title}は別ウィンドウに表示中</span><button onClick={restore}>戻す</button></div>{createPortal(content,mount)}</> : content;
+  return mount ? <>{boundary}<div className="popout-placeholder"><ExternalLink size={17}/><span>{title}は別ウィンドウに表示中</span><button onClick={restore}>戻す</button></div>{createPortal(<div className={'popout-group '+position} data-dock-position={position}>{boundary}{content}</div>,mount)}</> : <>{boundary}{content}</>;
 }
 export function Dashboard({ type,setType,settings,onSettingsChange,table,theme,onSaveRef,onCaptureRef,onExport,onError }: { type:string;setType(value:string):void;settings:ChartSettings;onSettingsChange(settings:ChartSettings):void;table:TableData|null;theme:string;onSaveRef:React.MutableRefObject<(()=>void)|null>;onCaptureRef:React.MutableRefObject<(()=>string|null)|null>;onExport():void;onError(message:string):void }) {
   const [context,setContext]=useState<{x:number;y:number}|null>(null);
