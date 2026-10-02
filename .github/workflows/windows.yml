@@ -1,0 +1,113 @@
+name: Windows build, test and release
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      statuses: write
+    outputs:
+      version: ${{ steps.package.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Report build started
+        if: github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              ...context.repo, sha: context.sha, state: 'pending',
+              context: 'CSV nyaan Viewer / Windows', description: 'Windows build and tests are running',
+              target_url: `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:ui
+      - run: npm run dist:win -- --publish never
+      - name: Package source and checksums
+        id: package
+        run: node scripts/package-release.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CSV-nyaan-Viewer-release
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            release/CSV-nyaan-Viewer-*.zip
+            release/SHA256SUMS.txt
+      - name: Report build result
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          BUILD_RESULT: ${{ job.status }}
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              ...context.repo, sha: context.sha,
+              state: process.env.BUILD_RESULT === 'success' ? 'success' : 'failure',
+              context: 'CSV nyaan Viewer / Windows', description: `Windows build: ${process.env.BUILD_RESULT}`,
+              target_url: `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });
+  release:
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    needs: windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report release started
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              ...context.repo, sha: context.sha, state: 'pending',
+              context: 'CSV nyaan Viewer / Release', description: 'Uploading downloadable release assets',
+              target_url: `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });
+      - uses: actions/download-artifact@v4
+        with:
+          name: CSV-nyaan-Viewer-release
+          path: release
+      - name: Publish Windows ZIP and source on GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.windows.outputs.version }}
+        run: |
+          tag="v${RELEASE_VERSION}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" release/*.zip release/SHA256SUMS.txt --clobber
+          else
+            gh release create "$tag" release/*.zip release/SHA256SUMS.txt \
+              --target "$GITHUB_SHA" --title "CSV nyaan Viewer ${RELEASE_VERSION}" \
+              --notes-file docs/release-notes.md
+          fi
+      - name: Report release result
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          RELEASE_RESULT: ${{ job.status }}
+          RELEASE_VERSION: ${{ needs.windows.outputs.version }}
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              ...context.repo, sha: context.sha,
+              state: process.env.RELEASE_RESULT === 'success' ? 'success' : 'failure',
+              context: 'CSV nyaan Viewer / Release', description: `Release upload: ${process.env.RELEASE_RESULT}`,
+              target_url: `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/releases/tag/v${process.env.RELEASE_VERSION}`
+            });

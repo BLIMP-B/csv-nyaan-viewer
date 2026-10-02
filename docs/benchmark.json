@@ -1,0 +1,12 @@
+{
+  "records": 1000000,
+  "bytes": 42890024,
+  "indexMs": 595,
+  "lastPageMs": 1,
+  "filterSortMs": 2267,
+  "filteredRecords": 100000,
+  "lastId": "00999999",
+  "rssDeltaMiB": 306,
+  "platform": "linux",
+  "node": "v24.19.0"
+}
