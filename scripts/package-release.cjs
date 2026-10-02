@@ -26,7 +26,9 @@ async function packageRelease() {
   const source = path.join(destination, `${prefix}-source.zip`);
   fs.writeFileSync(source, await archive.generateAsync({ type: 'nodebuffer', platform: 'UNIX', compression: 'DEFLATE', compressionOptions: { level: 9 } }));
   const lines = [];
-  for (const file of [windows, source]) {
+  const signature = path.join(destination, 'SIGNATURE.json');
+  const certificate = path.join(destination, 'test-signing.cer');
+  for (const file of [windows, source, ...[signature, certificate].filter(file => fs.existsSync(file))]) {
     const hash = crypto.createHash('sha256');
     for await (const chunk of fs.createReadStream(file)) hash.update(chunk);
     lines.push(`${hash.digest('hex')}  ${path.basename(file)}`);

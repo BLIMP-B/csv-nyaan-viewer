@@ -6,15 +6,15 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.1.2-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.1.3-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
-未署名の配布物です。組織のWindows実行ポリシーによっては許可されない場合があります。Windows ARM64・32bit専用版は含みません。
+現在は検証環境向けの自己署名版です。公開証明書 `test-signing.cer` を同梱し、署名状態・拇印はReleasesの `SIGNATURE.json` で確認できます。他のWindows環境では、検証用証明書の手動信頼登録が必要です。手順は [Windowsコード署名](docs/code-signing.md) に記載しています。組織のWindows実行ポリシーによっては許可されない場合があります。Windows ARM64・32bit専用版は含みません。
 
 ## 機能
 
-最上段に「左ペイン切り替え・ファイル・検索・移動・ヘルプ・共有・接続」を配置しています。左ペインは「ファイル」の左のボタンで開閉します。ファイル名・パス・フォルダー表示は1列にまとめ、表の表示面積を広く取っています。
+最上段に「左ペイン切り替え・ファイル・検索・移動・ヘルプ・共有・接続」を配置しています。URL入力欄は「接続」の右側、「読み取り専用」の左側に収めています。左ペインは「ファイル」の左のボタンで開閉します。ファイル名・パス・フォルダー表示は1列にまとめ、表の表示面積を広く取っています。
 
 - CSV / TSV / 任意のASCII区切り文字、引用符・複数行セル、列数が不揃いなファイル。
 - 先頭ゼロ、長い整数、日付らしい値、数式らしい文字列をそのまま表示。
@@ -82,9 +82,15 @@ Office・Fluent・鮮やか・パステル・アース・色覚に配慮・ブ�
 
 XLSX / XLS / XLSM / XLSB / XLTX / XLTM / XLT / XLAM / XLA、およびODS / FODS / SpreadsheetML XMLを直接読み込みます。CSVへの中間変換は行いません。シートは上部のプルダウンで切り替えます。保存された表示値・書式を利用し、数式は保存済みの結果を表示します。結果のない式は式文字列を表示します。マクロ・外部リンク更新・数式再計算は実行しません。Excel側ですでに丸められた数値を元の入力精度へ復元することはできません。
 
-上部の入力バーにオンラインExcel／GoogleスプレッドシートURLを入力するか、URLを画面へドロップします。公開の直接ダウンロードURL、Google Sheetsの共有URL、Google Drive内のExcel、OneDrive／SharePointの共有URLを扱います。公開取得できないファイルはGoogle／Microsoftの接続設定でログインしてください。閲覧権限とAPI有効化が必要です。
+最上段の「接続」と「読み取り専用」の間にある入力欄へオンラインExcel／GoogleスプレッドシートURLを入力するか、URLを画面へドロップします。公開の直接ダウンロードURL、Google Sheetsの共有URL、Google Drive内のExcel、OneDrive／SharePointの共有URLを扱います。公開取得できないファイルはGoogle／Microsoftの接続設定でログインしてください。閲覧権限とAPI有効化が必要です。
 
 オンラインファイルは読み取り専用スナップショットとして一時保存し、タブを閉じる／正常終了時に削除します。元のURLを表示し、再読み込みで再取得します。リアルタイム同期・共同編集はありません。パスワード保護されたブック、XLWワークスペース、埋め込みグラフの再現には対応していません。Excelは256 MiB／シート500万セル以内です。
+
+## オブザーバーとコード署名
+
+オブザーバーは **BLINP_B(furoneko+)** です。「ヘルプ → このアプリについて」に [GitHub](https://github.com/yosu-yosu) と [ウェブサイト](https://yosuyosu.co.jp/) を掲載しています。
+
+検証用の自己署名証明書でWindows実行ファイルへ署名し、配布前にAuthenticodeを検証します。秘密鍵は配布せず、公開証明書だけを同梱します。手順と現在の署名状態は [Windowsコード署名](docs/code-signing.md) を参照してください。Releasesの `SIGNATURE.json` に配布実行ファイルの検証結果を記録します。
 
 ## アプリアイコン
 
@@ -142,11 +148,11 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.2-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.3-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 
-コア／共有API契約／Excel・分析・全グラフ描画テスト58件、Electron UIテスト16件。実接続の検証には利用者のOAuth登録・アカウントが必要です。この作業環境ではLinuxでZIPを生成し、テストしています。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
+コア／共有API契約／Excel・分析・全グラフ描画テスト61件、Electron UIテスト16件。実接続の検証には利用者のOAuth登録・アカウントが必要です。この作業環境ではLinuxでZIPを生成し、テストしています。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
 
 100万レコード、約40.9 MiBの日本語CSVで索引生成約0.60秒、末尾10行の取得約1 ms、10万件へのフィルター＋数値ソート約2.27秒を測定しました。これは本環境の参考値です。詳細は [ベンチマーク結果](docs/benchmark.json) を参照してください。
 

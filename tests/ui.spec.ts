@@ -22,8 +22,20 @@ test('最上段のメニュー・左ペイン開閉・コンパクトなファ�
   expect(bundledIcon.subarray(0,8).toString('hex')).toBe('89504e470d0a1a0a');
   await expect(page.locator('.compact-titlebar')).not.toContainText('CSV nyaan Viewer');await expect(page.locator('.subtitle')).toHaveCount(0);await expect(page.locator('.sidebar')).toHaveCount(0);
   for(const label of ['ファイル','検索','移動','ヘルプ','共有','接続'])await expect(page.locator('.menubar').getByRole('button',{name:label,exact:true})).toBeVisible();
+  await expect(page.locator('.compact-titlebar .online-bar')).toBeVisible();
+  for(const width of [1000,1440]){
+    await app.evaluate(({BrowserWindow},width)=>BrowserWindow.getAllWindows()[0].setContentSize(width,940),width);
+    await expect.poll(async()=>(await page.locator('.compact-titlebar').boundingBox())!.width).toBe(width);
+    const connect=(await page.locator('.menubar').getByRole('button',{name:'接続',exact:true}).boundingBox())!,url=(await page.locator('.online-bar').boundingBox())!,readonly=(await page.locator('.readonly').boundingBox())!,header=(await page.locator('.compact-titlebar').boundingBox())!;
+    expect(url.x).toBeGreaterThanOrEqual(connect.x+connect.width);expect(url.x+url.width).toBeLessThanOrEqual(readonly.x);expect(url.width).toBeGreaterThan(100);expect(url.y).toBeGreaterThanOrEqual(header.y);expect(url.y+url.height).toBeLessThanOrEqual(header.y+header.height);expect(header.height).toBe(34);
+  }
   await page.getByLabel('左ペインを開閉').click();await expect(page.locator('.sidebar')).toBeVisible();await page.getByLabel('左ペインを開閉').click();await expect(page.locator('.sidebar')).toHaveCount(0);
   expect((await page.locator('.document-heading').boundingBox())!.height).toBeLessThanOrEqual(40);
+  await page.locator('.menubar').getByRole('button',{name:'ヘルプ',exact:true}).click();await page.getByRole('button',{name:'このアプリについて',exact:true}).click();
+  const about=page.getByRole('dialog');await expect(about).toContainText('BLINP_B(furoneko+)');await expect(about.getByRole('link',{name:/GitHub/})).toHaveAttribute('href','https://github.com/yosu-yosu');await expect(about.getByRole('link',{name:/ウェブサイト/})).toHaveAttribute('href','https://yosuyosu.co.jp/');
+  await app.evaluate(({shell})=>{(globalThis as any).aboutUrls=[];shell.openExternal=async url=>{(globalThis as any).aboutUrls.push(url);};});
+  await about.getByRole('link',{name:/GitHub/}).click();await about.getByRole('link',{name:/ウェブサイト/}).click();await expect.poll(()=>app.evaluate(()=>(globalThis as any).aboutUrls)).toEqual(['https://github.com/yosu-yosu','https://yosuyosu.co.jp/']);
+  await page.getByLabel('ダイアログを閉じる').click();
 });
 test('検索・フィルター・自然順ソート・非破壊読み込み',async()=>{
   await page.getByRole('button',{name:'フィルター',exact:true}).click();

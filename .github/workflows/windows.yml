@@ -1,6 +1,16 @@
 name: Windows build, test and release
 on:
   workflow_dispatch:
+    inputs:
+      signing_mode:
+        description: 'Windowsの署名方式（現在は検証用自己署名）'
+        type: choice
+        options: [self-signed-test, certificate, unsigned]
+        default: self-signed-test
+      require_signature:
+        description: '有効なWindowsコード署名を必須にする'
+        type: boolean
+        default: false
   push:
     branches: [main]
     tags: ['v*']
@@ -13,6 +23,11 @@ concurrency:
 jobs:
   windows:
     runs-on: windows-latest
+    env:
+      CSV_SIGNING_MODE: ${{ inputs.signing_mode || 'self-signed-test' }}
+      WIN_CSC_LINK: ${{ inputs.signing_mode == 'certificate' && secrets.WINDOWS_CSC_LINK || '' }}
+      WIN_CSC_KEY_PASSWORD: ${{ inputs.signing_mode == 'certificate' && secrets.WINDOWS_CSC_KEY_PASSWORD || '' }}
+      CSV_REQUIRE_CODE_SIGNATURE: ${{ inputs.require_signature && 'true' || 'false' }}
     permissions:
       contents: read
       statuses: write
@@ -37,9 +52,19 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run test:ui
+      - name: Prepare Windows code-signing certificate
+        run: |
+          if ($env:CSV_SIGNING_MODE -eq 'self-signed-test') {
+            ./scripts/new-test-certificate.ps1
+          } elseif ($env:CSV_SIGNING_MODE -eq 'certificate') {
+            if ([string]::IsNullOrWhiteSpace($env:WIN_CSC_LINK)) { throw 'WINDOWS_CSC_LINK is not configured' }
+            'CSV_REQUIRE_CODE_SIGNATURE=true' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          }
       - run: npm run dist:win -- --publish never
       - name: Verify packaged Windows icon
         run: node scripts/verify-windows-icon.cjs
+      - name: Verify Windows code signature
+        run: ./scripts/verify-windows-signature.ps1
       - name: Package source and checksums
         id: package
         run: node scripts/package-release.cjs
@@ -51,6 +76,17 @@ jobs:
           path: |
             release/CSV-nyaan-Viewer-*.zip
             release/SHA256SUMS.txt
+            release/SIGNATURE.json
+            release/test-signing.cer
+      - name: Remove temporary test certificate and private key
+        if: always()
+        run: |
+          if ($env:CSV_TEST_CERT_THUMBPRINT -match '^[A-Fa-f0-9]{40}$') {
+            $my = "Cert:\CurrentUser\My\$env:CSV_TEST_CERT_THUMBPRINT"
+            $root = "Cert:\CurrentUser\Root\$env:CSV_TEST_CERT_THUMBPRINT"
+            if (Test-Path $my) { Remove-Item $my -DeleteKey -Force }
+            if (Test-Path $root) { Remove-Item $root -Force }
+          }
       - name: Report build result
         if: always() && github.event_name != 'pull_request'
         uses: actions/github-script@v7
@@ -92,10 +128,12 @@ jobs:
           RELEASE_VERSION: ${{ needs.windows.outputs.version }}
         run: |
           tag="v${RELEASE_VERSION}"
+          assets=(release/*.zip release/SHA256SUMS.txt release/SIGNATURE.json)
+          if [ -f release/test-signing.cer ]; then assets+=(release/test-signing.cer); fi
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" release/*.zip release/SHA256SUMS.txt --clobber
+            gh release upload "$tag" "${assets[@]}" --clobber
           else
-            gh release create "$tag" release/*.zip release/SHA256SUMS.txt \
+            gh release create "$tag" "${assets[@]}" \
               --target "$GITHUB_SHA" --title "CSV nyaan Viewer ${RELEASE_VERSION}" \
               --notes-file docs/release-notes.md
           fi
