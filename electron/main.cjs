@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const sharing=require('./sharing.cjs');
 const {openOnline}=require('./online.cjs');
 let onlineCache;
+let sBrowser;
 let window, nextId = 0, nextRequest = 0;
 const files = new Map();
 const profilePath=app.commandLine.getSwitchValue('user-data-dir');if(profilePath)app.setPath('userData',path.resolve(profilePath));
@@ -37,6 +38,7 @@ async function openFile(filePath, options = {}) {
 app.whenReady().then(() => {
   nativeTheme.themeSource = readSettings().theme === 'dark' ? 'dark' : 'light';
   sharing.init(app.getPath('userData'));onlineCache=fs.mkdtempSync(path.join(app.getPath('temp'),'csv-nyaan-online-'));
+  sBrowser=require('./s-browser.cjs').createBrowserManager({electron:require('electron'),userData:app.getPath('userData'),tempDir:onlineCache,mainWindow:()=>window,resolveFile:id=>files.get(id),protectFile:protectSources,notify:accounts=>emit('csv:sAccounts',accounts)});
   const customIcon=path.join(app.getPath('userData'),'app-icon.png'),bundledIcon=path.join(__dirname,'../assets/icon.png');
   window = new BrowserWindow({ icon:fs.existsSync(customIcon)?customIcon:fs.existsSync(bundledIcon)?bundledIcon:undefined,width: 1440, height: 940, minWidth: 1000, minHeight: 560, titleBarStyle:'hidden', titleBarOverlay:{color:readSettings().theme==='dark'?'#242424':'#f5f5f5',symbolColor:readSettings().theme==='dark'?'#dedede':'#424242',height:34}, autoHideMenuBar:true, title: 'CSV nyaan Viewer', backgroundColor: nativeTheme.shouldUseDarkColors ? '#292929' : '#ffffff', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   window.setMenuBarVisibility(false);
@@ -48,6 +50,7 @@ app.whenReady().then(() => {
     { label: '操作', submenu: [{ label: 'コピー', accelerator: 'CmdOrCtrl+C', click: send('copy') }, { label: '全選択', accelerator: 'CmdOrCtrl+A', click: send('selectAll') }, { label: '検索', accelerator: 'CmdOrCtrl+F', click: send('find') }, { label: '次を検索', accelerator: 'F3', click: send('next') }, { label: '前を検索', accelerator: 'Shift+F3', click: send('previous') }, { label: '行・列へ移動', accelerator: 'CmdOrCtrl+G', click: send('goto') }] },
     { label: '表示', submenu: [{ label: 'グラフプレビュー', click: send('preview') }, { label: 'ファイル結合ペイン', click: send('merge') }, { label: 'グラフを画像として保存', click: send('saveChart') }, { label: 'テーマを切り替え', accelerator: 'CmdOrCtrl+Shift+L', click: send('theme') }, { role: 'togglefullscreen', label: '全画面' }] },
     { label:'共有',submenu:[{label:'選択・文書を共有',click:send('share')}]},{label:'接続',submenu:[{label:'アカウント接続設定',click:send('connections')}]},
+    {label:'S共有',submenu:[{label:'内部ブラウザで共有',click:send('sShare')}]},{label:'Sアカウント接続',submenu:[{label:'内部ブラウザのアカウント',click:send('sConnections')}]},
     { label: 'ヘルプ', submenu: [{ label: '操作ガイド', accelerator: 'F1', click: send('help') }, { label: 'CSV nyaan Viewerについて', click: send('about') }] }
   ]));
   window.loadFile(path.join(__dirname, '../dist/index.html'));
@@ -67,7 +70,7 @@ ipcMain.handle('csv:clipboard', (_, text) => { if (typeof text === 'string') cli
 ipcMain.handle('csv:preferences', (_, patch) => { const settings = readSettings(); if (patch && typeof patch === 'object') { if(patch.theme){nativeTheme.themeSource=patch.theme==='dark'?'dark':'light';window?.setBackgroundColor(nativeTheme.shouldUseDarkColors?'#292929':'#ffffff');} if(patch.theme&&window?.setTitleBarOverlay)window.setTitleBarOverlay({color:patch.theme==='dark'?'#242424':'#f5f5f5',symbolColor:patch.theme==='dark'?'#dedede':'#424242',height:34}); for (const key of ['theme','imageExportTheme','fontSize','fontFamily','accent','previewPosition','mergePosition','dockLayout','dockSizes','sidebarWidth']) if (key in patch) settings[key] = patch[key]; writeSettings(settings); } return settings; });
 ipcMain.handle('csv:reveal', (_, filePath) => shell.showItemInFolder(filePath));
 app.on('window-all-closed', () => app.quit());
-app.on('will-quit',()=>{if(onlineCache)try{fs.rmSync(onlineCache,{recursive:true,force:true});}catch{}});
+app.on('will-quit',()=>{sBrowser?.dispose();if(onlineCache)try{fs.rmSync(onlineCache,{recursive:true,force:true});}catch{}});
 
 ipcMain.handle('csv:export', async (_, { id, options }) => {
   const entry = files.get(id); if (!entry) throw new Error('ファイルが閉じられています。');
@@ -105,10 +108,10 @@ ipcMain.handle('csv:saveChart', async (_, { data, format }) => {
 });
 
 ipcMain.handle('csv:connections',()=>sharing.status());
-ipcMain.handle('csv:configureConnection',(_, {provider,config})=>sharing.configure(provider,config));
-ipcMain.handle('csv:login',(_,provider)=>sharing.login(provider,info=>emit('csv:auth',info)));
+ipcMain.handle('csv:configureConnection',(_, {provider,config})=>{const result=sharing.configure(provider,config);emit('csv:connectionsChanged',result);return result;});
+ipcMain.handle('csv:login',async(_,provider)=>{const result=await sharing.login(provider,info=>emit('csv:auth',info));emit('csv:connectionsChanged',result);return result;});
 ipcMain.handle('csv:cancelLogin',()=>sharing.cancelLogin());
-ipcMain.handle('csv:logout',(_,provider)=>sharing.logout(provider));
+ipcMain.handle('csv:logout',(_,provider)=>{const result=sharing.logout(provider);emit('csv:connectionsChanged',result);return result;});
 ipcMain.handle('csv:share',(_,options)=>sharing.share(options));
 ipcMain.handle('csv:shareBrowser',(_,options)=>sharing.browser(options));
 

@@ -11,6 +11,12 @@ declare global { interface Window { csv: {
   icon():Promise<string|null>;
   chooseIcon():Promise<string|null>;
   connections(): Promise<import('./sharing').ConnectionStatus>;
+  sAccounts():Promise<import('./s-sharing').SAccount[]>;
+  sServices():Promise<import('./s-sharing').SService[]>;
+  sOpen(options:import('./s-sharing').SOpenOptions):Promise<import('./s-sharing').SOpenResult>;
+  sLogout(provider:string):Promise<import('./s-sharing').SAccount[]>;
+  onSAccounts(callback:(accounts:import('./s-sharing').SAccount[])=>void):()=>void;
+  onConnectionsChanged(callback:(status:import('./sharing').ConnectionStatus)=>void):()=>void;
   configureConnection(provider:string, config: Record<string,string>): Promise<import('./sharing').ConnectionStatus>;
   login(provider:string): Promise<import('./sharing').ConnectionStatus>;
   cancelLogin(): Promise<void>;

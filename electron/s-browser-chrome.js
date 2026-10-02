@@ -1,0 +1,8 @@
+'use strict';
+const byId=id=>document.getElementById(id);let last;
+function render(state){last=state;document.documentElement.dataset.theme=state.theme;byId('service').textContent=state.serviceName;document.title=state.serviceName+' — S内部ブラウザ';if(document.activeElement!==byId('address'))byId('address').value=state.url;byId('back').disabled=!state.canBack;byId('forward').disabled=!state.canForward;byId('confirm').disabled=state.busy||!state.canConfirm;byId('logout').disabled=!state.account?.connected;byId('account-state').textContent=state.account?.connected?state.account.label+'（ブラウザ接続・ユーザー確認済み）':'サービスの画面でログインしてください。';byId('share-row').hidden=!state.fileName;byId('file-name').textContent=state.fileName||'';byId('native').hidden=!state.native;byId('guidance').textContent=state.fileName?'サービス画面の添付・アップロードから共有ファイルを選べます。送信・公開はサービス画面で確定してください。':'ログインを確認できたら「このログインを使用」を押してください。認証が制限された場合は既存の「接続」を利用できます。';byId('notice').textContent=state.error||'';}
+async function run(command,value){try{const result=await window.sBrowser.command(command,value);if(result?.note)byId('notice').textContent=result.note;}catch(error){byId('notice').textContent=String(error).replace(/^Error: Error invoking remote method '[^']+': Error: /,'');}}
+for(const name of ['back','forward','reload','external','save','copy','native','logout'])byId(name).addEventListener('click',()=>run(name));
+byId('confirm').addEventListener('click',()=>run('confirm',byId('account-label').value));
+byId('address-form').addEventListener('submit',event=>{event.preventDefault();run('navigate',byId('address').value);});
+window.sBrowser.onState(render);window.sBrowser.state().then(render).catch(error=>byId('notice').textContent=String(error));
