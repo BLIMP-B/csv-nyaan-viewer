@@ -48,6 +48,16 @@ test('ライト・ダークの全アクセントでメニュー・設定・共�
       await expect(page.locator('html')).toHaveAttribute('data-theme',theme);
       await expect.poll(()=>app.evaluate(({nativeTheme})=>nativeTheme.themeSource)).toBe(theme);
       await readableText(page);await page.getByRole('button',{name:'完了',exact:true}).click();await readableText(page);
+      const columnCell=page.locator('[data-row="0"][data-col="1"]'),rowCell=page.locator('[data-row="0"][data-col="0"]');
+      const normalColor=await columnCell.evaluate(el=>getComputedStyle(el).color);
+      await page.locator('.column-head[data-head-index="1"] .header-eye-zone').hover();await page.getByLabel('列Bを非表示',{exact:true}).click();
+      const rowHead=page.locator('.row-head[data-head-index="0"]');await rowHead.locator('.header-eye-zone').hover();await rowHead.getByTitle('非表示にする',{exact:true}).click();
+      await expect(columnCell.locator('span')).toBeVisible();await expect(columnCell.locator('span')).toHaveText('1200000');await expect(columnCell).toHaveAttribute('title',/1200000/);
+      await expect(rowCell.locator('span')).toBeVisible();await expect(rowCell.locator('span')).toHaveText('1月');
+      expect(await columnCell.evaluate(el=>getComputedStyle(el).color)).not.toBe(normalColor);await readableText(page);
+      await page.getByLabel('列Bを表示',{exact:true}).click();await expect(columnCell).toHaveClass(/cell-concealed/);
+      await rowHead.getByTitle('表示する',{exact:true}).click();await expect(columnCell).not.toHaveClass(/cell-concealed/);await expect(rowCell).not.toHaveClass(/cell-concealed/);
+      await expect(columnCell).toHaveCSS('color',normalColor);
       await page.locator('.menubar').getByRole('button',{name:'ファイル',exact:true}).click();await readableText(page);await page.locator('.menu-shield').click({position:{x:800,y:400}});
     }
     for(const name of ['フィルター','並べ替え','エクスポート']){
