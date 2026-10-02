@@ -229,7 +229,7 @@ class CsvFile {
       headers.push(values.filter(Boolean).join(' / ') || columnName(c));
     }
     const lineEndings = Object.entries(this.newlines).filter(([,n]) => n > 0).map(([type]) => type).join(' / ') || 'なし';
-    return { kind: this.kind, path: this.path, size: this.size, encoding: this.encoding, delimiter: this.delimiter, bom: this.bom, records: this.starts.length, columns: this.columns, headerRows: this.headerRows, headerRecords, headers, count: this.count, lineEndings, warnings: this.warnings };
+    return { kind: this.kind, path: this.path, size: this.size, encoding: this.encoding, delimiter: this.delimiter, bom: this.bom, records: this.starts.length, columns: this.columns, headerRows: this.headerRows, headerRecords, headers, count: this.count, excludedRows:this.excludedRows||[], lineEndings, warnings: this.warnings };
   }
   get count() { return this.view ? this.view.length : Math.max(0, this.starts.length - this.headerRows); }
   sourceIndex(index) { return this.view ? this.view[index] : index + this.headerRows; }
@@ -359,16 +359,34 @@ class CsvFile {
     }
     return {headers,rows,total:rows.length*cols.length,truncated,inferred};
   }
-  analysisSample(selections, all=false,limits={}) {
+  analysisSample(selections, all=false,limits={}, visibility={}) {
     this.checkChanged();const populationRows=all?this.starts.length-this.headerRows:this.count;
     const ranges=all?[{row0:0,row1:populationRows-1,col0:0,col1:this.columns-1}]:(Array.isArray(selections)?selections:[selections]).filter(Boolean).slice(0,100);
-    const segments=ranges.map(s=>[Math.max(0,Math.min(s.row0,s.row1)),Math.min(populationRows-1,Math.max(s.row0,s.row1))]).filter(([a,b])=>a<=b).sort((a,b)=>a[0]-b[0]);
-    const union=[];for(const [a,b]of segments){const last=union.at(-1);if(last&&a<=last[1]+1)last[1]=Math.max(last[1],b);else union.push([a,b]);}
-    const total=union.reduce((s,[a,b])=>s+b-a+1,0),colSet=new Set();for(const s of ranges)for(let c=Math.max(0,Math.min(s.col0,s.col1));c<=Math.min(this.columns-1,Math.max(s.col0,s.col1));c++)colSet.add(c);
-    const allCols=[...colSet].sort((a,b)=>a-b),cols=allCols.length<=256?allCols:Array.from({length:256},(_,i)=>allCols[Math.round(i*(allCols.length-1)/255)]);
-    const n=Math.min(total,limits.rows??5000,Math.floor((limits.cells??250000)/Math.max(1,cols.length))),rows=[],sourceRows=[];let segment=0,offset=0;
-    for(let i=0;i<n;i++){const ordinal=n===1?0:Math.floor(i*(total-1)/(n-1));while(segment<union.length-1&&ordinal>=offset+union[segment][1]-union[segment][0]+1){offset+=union[segment][1]-union[segment][0]+1;segment++;}const r=union[segment][0]+ordinal-offset,source=all?r+this.headerRows:this.sourceIndex(r),row=this.row(source);rows.push(cols.map(c=>all||ranges.some(s=>r>=Math.min(s.row0,s.row1)&&r<=Math.max(s.row0,s.row1)&&c>=Math.min(s.col0,s.col1)&&c<=Math.max(s.col0,s.col1))?row[c]||'':''));sourceRows.push(source+1);}
-    return {headers:cols.map(c=>this.metadata().headers[c]),rows,sourceRows,populationRows:total,populationColumns:allCols.length,truncated:n<total||cols.length<allCols.length};
+    const segments=ranges.map(s=>[Math.max(0,Math.min(s.row0,s.row1)),Math.min(populationRows-1,Math.max(s.row0,s.row1))]).filter(([a,b])=>Number.isInteger(a)&&Number.isInteger(b)&&a<=b).sort((a,b)=>a[0]-b[0]);
+    const merged=[];for(const [a,b]of segments){const last=merged.at(-1);if(last&&a<=last[1]+1)last[1]=Math.max(last[1],b);else merged.push([a,b]);}
+    const hidden=new Set(visibility.hiddenRows||[]),hiddenColumns=new Set(visibility.hiddenColumns||[]),blocked=[];
+    if(hidden.size){if(!all&&this.view)this.view.forEach((source,r)=>{if(hidden.has(source))blocked.push(r);});else for(const source of hidden)blocked.push(source-this.headerRows);}
+    blocked.sort((a,b)=>a-b);const union=[];let at=0;
+    for(const [a,b]of merged){let first=a;while(at<blocked.length&&blocked[at]<a)at++;while(at<blocked.length&&blocked[at]<=b){const stop=blocked[at++];if(stop>=first){if(stop>first)union.push([first,stop-1]);first=stop+1;}}if(first<=b)union.push([first,b]);}
+    const total=union.reduce((s,[a,b])=>s+b-a+1,0),colSet=new Set();for(const s of ranges)for(let c=Math.max(0,Math.min(s.col0,s.col1));c<=Math.min(this.columns-1,Math.max(s.col0,s.col1));c++)if(!hiddenColumns.has(c)&&(!visibility.columns||visibility.columns.includes(c)))colSet.add(c);
+    const allCols=[...colSet].sort((a,b)=>a-b),cap=Math.max(0,Math.min(256,limits.columns??256)),cols=allCols.length<=cap?allCols:cap===1?[allCols[0]]:Array.from({length:cap},(_,i)=>allCols[Math.round(i*(allCols.length-1)/(cap-1))]);
+    const n=cols.length?Math.min(total,limits.rows??5000,Math.floor((limits.cells??250000)/cols.length)):0,rows=[],sourceRows=[],sampleOrdinals=[],rowLabels=[];const headerNames=this.metadata().headers;
+    const ordinals=limits.ordinals||Array.from({length:n},(_,i)=>n===1?0:Math.floor(i*(total-1)/(n-1)));let segment=0,offset=0;
+    for(const ordinal of ordinals){if(!Number.isInteger(ordinal)||ordinal<0||ordinal>=total||!cols.length)continue;while(segment<union.length-1&&ordinal>=offset+union[segment][1]-union[segment][0]+1){offset+=union[segment][1]-union[segment][0]+1;segment++;}const r=union[segment][0]+ordinal-offset,source=all?r+this.headerRows:this.sourceIndex(r),row=this.row(source);rows.push(cols.map(c=>all||ranges.some(s=>r>=Math.min(s.row0,s.row1)&&r<=Math.max(s.row0,s.row1)&&c>=Math.min(s.col0,s.col1)&&c<=Math.max(s.col0,s.col1))?row[c]||'':''));sourceRows.push(source+1);sampleOrdinals.push(ordinal);rowLabels.push(this.analysisRowLabel(row,headerNames,hiddenColumns,cols));}
+    return {headers:cols.map(c=>this.metadata().headers[c]),rows,sourceRows,sampleOrdinals,rowLabels,populationRows:total,populationColumns:allCols.length,truncated:rows.length<total||cols.length<allCols.length};
+  }
+  analysisRowLabel(row,headers,hiddenColumns,cols){
+    const named=headers.findIndex((h,c)=>!hiddenColumns.has(c)&&/^(?:ID|名前|名称|日付|日時|年月|月|行名|キー|name|date|time|key)$/i.test(h));
+    if(named>=0&&row[named]?.trim())return row[named];
+    const {number}=require('./statistics.cjs');for(let c=0;c<Math.max(1,...cols.map(v=>v+1));c++)if(!hiddenColumns.has(c)&&row[c]?.trim()&&number(row[c])===null)return row[c];return null;
+  }
+  tableSnapshot(selections, visibility={}, raw=false) {
+    this.checkChanged();const count=raw?this.starts.length:this.count,ranges=(Array.isArray(selections)?selections:[selections]).filter(Boolean).slice(0,100);
+    const hiddenCols=new Set(visibility.hiddenColumns||[]),hiddenRows=new Set(visibility.hiddenRows||[]),columns=new Set(),indices=new Set();
+    for(const s of ranges){const r0=Math.max(0,Math.min(s.row0,s.row1)),r1=Math.min(count-1,Math.max(s.row0,s.row1)),c0=Math.max(0,Math.min(s.col0,s.col1)),c1=Math.min(this.columns-1,Math.max(s.col0,s.col1));if(![r0,r1,c0,c1].every(Number.isInteger))throw Error('セル範囲が不正です。');for(let c=c0;c<=c1;c++)if(!hiddenCols.has(c)&&(!visibility.columns||visibility.columns.includes(c)))columns.add(c);for(let r=r0;r<=r1;r++){const source=raw?r:this.sourceIndex(r);if(!hiddenRows.has(source))indices.add(r);if(indices.size>100000)throw Error('テーブルは100,000セル以内です。');}}
+    const cols=[...columns].sort((a,b)=>a-b),rs=[...indices].sort((a,b)=>a-b);if(rs.length*cols.length>100000)throw Error('テーブルは100,000セル以内です。');if(!cols.length||!rs.length)throw Error('テーブルに含められる表示中のセルがありません。');
+    let length=0;const mask=[],sources=[],rows=rs.map(r=>{const source=raw?r:this.sourceIndex(r);sources.push(source);const cells=this.row(source),selected=cols.filter(c=>ranges.some(s=>r>=Math.min(s.row0,s.row1)&&r<=Math.max(s.row0,s.row1)&&c>=Math.min(s.col0,s.col1)&&c<=Math.max(s.col0,s.col1)));mask.push(selected);const values=cols.map(c=>selected.includes(c)?cells[c]||'':'');length+=values.reduce((n,v)=>n+v.length,0);if(length>16*BLOCK)throw Error('テーブルの文字量が16 Mi文字を超えています。');return values;});
+    return {headers:cols.map(c=>this.metadata().headers[c]),rows,sourceRows:sources,sourceColumns:cols,mask,rowLabels:rs.map(r=>this.analysisRowLabel(this.row(raw?r:this.sourceIndex(r)),this.metadata().headers,hiddenCols,cols))};
   }
   text() {
     this.checkChanged();

@@ -44,7 +44,7 @@ test('全シートを下部タブに並べ、クリック・キー・横スク�
   await page.getByRole('button', { name: 'フィルター', exact: true }).click(); await page.getByLabel('条件1の値').fill('0001'); await page.getByRole('button', { name: '適用', exact: true }).click(); await expect(page.locator('.filter-summary')).toBeVisible();
   await page.locator('.column-head[data-head-index="1"] .header-eye-zone').hover(); await page.getByLabel('列Bを非表示', { exact: true }).click(); await expect(cell(0, 1)).toHaveClass(/cell-concealed/);
   await sheet(1).click(); await expect(cell(0, 0)).toHaveText('1'); await expect(cell(0, 1)).not.toHaveClass(/cell-concealed/); await expect(page.locator('.filter-summary')).toHaveCount(0); await expect(page.getByRole('button', { name: 'フィルター', exact: true })).not.toHaveClass(/applied/);
-  await sheet(0).click(); await expect(cell(1, 0)).toHaveText('0002');
+  await sheet(0).click(); await expect(cell(0, 0)).toHaveText('0001'); await expect(page.locator('.filter-summary')).toBeVisible(); await expect(cell(0,1)).toHaveClass(/cell-concealed/); await page.getByLabel('表示状態を復元').click(); await expect(cell(1, 0)).toHaveText('0002');
 });
 
 test('ファイル別のシート一覧、単一シートとCSV、全テーマの読みやすさを確認する', async () => {

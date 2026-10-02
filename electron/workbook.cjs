@@ -39,7 +39,7 @@ class WorkbookFile extends CsvFile {
   row(index){return this.cells[index]||[];}
   metadata(){return {...super.metadata(),sheets:this.workbook.SheetNames,sheet:this.sheet,requestedHeaderRows:this.requestedHeaderRows,encoding:'workbook'};}
   configure(options={},progress){
-    if(options.sheet&&options.sheet!==this.sheet)return this.setSheet(options.sheet,options.headerRows??this.requestedHeaderRows);
+    if(options.sheet&&options.sheet!==this.sheet){this.setSheet(options.sheet,options.headerRows??this.requestedHeaderRows);return super.configure({filters:options.filters||[],sorts:options.sorts||[],excludedRows:options.excludedRows||[]},progress);}
     const result=super.configure(options,progress);
     if(options.headerRows!==undefined)this.requestedHeaderRows=Math.max(0,Math.min(30,options.headerRows));
     return {...result,requestedHeaderRows:this.requestedHeaderRows};

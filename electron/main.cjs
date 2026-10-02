@@ -62,7 +62,7 @@ ipcMain.handle('csv:openUrl',async(_,url)=>{const source=await openOnline(url,{f
 ipcMain.handle('csv:open', (_, args) => openFile(args.path, args.options));
 ipcMain.handle('csv:close', (_, id) => closeFile(id));
 ipcMain.handle('csv:cancel', () => { for (const id of files.keys()) if (files.get(id).pending.size) closeFile(id); });
-ipcMain.handle('csv:request', (_, { id, method, args }) => { if (!['configure','page','find','copy','text','selection','excludeSelection','selectedSources','sortColumns','move','analyze'].includes(method)) throw new Error('未対応の操作です。'); const entry = files.get(id); if (!entry) throw new Error('ファイルが閉じられています。再度開いてください。'); return request(entry, method, args); });
+ipcMain.handle('csv:request', (_, { id, method, args }) => { if (!['configure','page','find','copy','text','selection','excludeSelection','selectedSources','sortColumns','move','analyze','analysisSampleSheet','createTable'].includes(method)) throw new Error('未対応の操作です。'); const entry = files.get(id); if (!entry) throw new Error('ファイルが閉じられています。再度開いてください。'); return request(entry, method, args); });
 ipcMain.handle('csv:clipboard', (_, text) => { if (typeof text === 'string') clipboard.writeText(text); });
 ipcMain.handle('csv:preferences', (_, patch) => { const settings = readSettings(); if (patch && typeof patch === 'object') { if(patch.theme){nativeTheme.themeSource=patch.theme==='dark'?'dark':'light';window?.setBackgroundColor(nativeTheme.shouldUseDarkColors?'#292929':'#ffffff');} if(patch.theme&&window?.setTitleBarOverlay)window.setTitleBarOverlay({color:patch.theme==='dark'?'#242424':'#f5f5f5',symbolColor:patch.theme==='dark'?'#dedede':'#424242',height:34}); for (const key of ['theme','fontSize','fontFamily','accent','previewPosition','mergePosition','dockSizes','sidebarWidth']) if (key in patch) settings[key] = patch[key]; writeSettings(settings); } return settings; });
 ipcMain.handle('csv:reveal', (_, filePath) => shell.showItemInFolder(filePath));
@@ -142,3 +142,24 @@ ipcMain.handle('csv:chooseIcon',async()=>{
   const source=result.filePaths[0];if(fs.statSync(source).size>16*1024*1024)throw Error('アイコン画像は16 MiB以内です。');const image=nativeImage.createFromPath(source);if(image.isEmpty())throw Error('アイコン画像を読み込めませんでした。');const resized=image.resize({width:256,height:256,quality:'best'}),target=path.join(app.getPath('userData'),'app-icon.png');fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,resized.toPNG());window.setIcon(resized);return resized.toDataURL();
 });
 ipcMain.handle('csv:icon',()=>{const target=path.join(app.getPath('userData'),'app-icon.png'),bundled=path.join(__dirname,'../assets/icon.png');const source=fs.existsSync(target)?target:bundled;return fs.existsSync(source)?nativeImage.createFromPath(source).toDataURL():null;});
+
+// Analysis exports use the same original-file protection as ordinary exports.
+ipcMain.handle('csv:analyzeMany',async(_,sources)=>{
+  const {aggregate,sampleTable}=require('./analysis-aggregation.cjs');
+  return aggregate(sources,async(source,limits)=>{
+    if(source.table)return sampleTable(source,limits);
+    const entry=files.get(source.id);if(!entry)throw Error('集計元のファイルが閉じられています。');
+    const visibility=source.all?{}:{hiddenRows:source.view?.hiddenRows||[],hiddenColumns:[...(source.view?.hidden||[]),...(source.view?.deletedColumns||[])],columns:source.view?.columnFilter};
+    return request(entry,'analysisSampleSheet',{...source,visibility,limits});
+  });
+});
+ipcMain.handle('csv:saveAnalysis',async(_, {document,format})=>{
+  const {safeName,writeAnalysis}=require('./analysis-export.cjs');if(!['md','xlsx'].includes(format))throw Error('分析出力形式が不正です。');
+  const result=await dialog.showSaveDialog(window,{title:'分析結果を出力',defaultPath:safeName(document.name)+'.'+format,filters:[{name:format.toUpperCase(),extensions:[format]}]});if(result.canceled||!result.filePath)return null;
+  protectSources(result.filePath);return writeAnalysis(document,result.filePath,format);
+});
+ipcMain.handle('csv:savePlot',async(_, {data,format,name})=>{
+  const {safeName,plotData}=require('./analysis-export.cjs');const bytes=plotData(data,format);
+  const result=await dialog.showSaveDialog(window,{title:'分析グラフを保存',defaultPath:safeName(name)+'.'+format,filters:[{name:format.toUpperCase(),extensions:[format]}]});if(result.canceled||!result.filePath)return null;
+  protectSources(result.filePath);fs.writeFileSync(result.filePath,bytes);return result.filePath;
+});

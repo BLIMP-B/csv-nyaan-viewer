@@ -1,10 +1,10 @@
 export type Kind = 'csv' | 'text' | 'markdown' | 'excel';
-export interface Meta { sheets?:string[];sheet?:string;requestedHeaderRows?:number;sourceUrl?:string;name?:string;id: string; kind: Kind; path: string; size: number; encoding: string; delimiter: string; bom: number; records: number; columns: number; headerRows: number; headerRecords: string[][]; headers: string[]; count: number; lineEndings: string; warnings: string[] }
+export interface Meta { sheets?:string[];sheet?:string;requestedHeaderRows?:number;excludedRows?:number[];sourceUrl?:string;name?:string;id: string; kind: Kind; path: string; size: number; encoding: string; delimiter: string; bom: number; records: number; columns: number; headerRows: number; headerRecords: string[][]; headers: string[]; count: number; lineEndings: string; warnings: string[] }
 export interface Row { index: number; source: number; cells: string[] }
 export interface Filter { column: number; mode: string; value: string; caseSensitive?: boolean }
 export interface Sort { column: number; direction: string; mode: string }
 export interface Selection { row0: number; row1: number; col0: number; col1: number }
-export interface Tab { meta: Meta; filters: Filter[]; sorts: Sort[]; hidden: number[]; hiddenRows?:number[]; deletedColumns?:number[]; columnOrder?:number[]; columnFilter?:number[]; frozen: number; widths: Record<number, number>; selection: Selection | null; ranges?: Selection[]; scrollTop: number; scrollLeft: number; preview: boolean }
+export interface Tab { sheetViews?:Record<string,import('./analysis-types').SheetView>; selectionExplicit?:boolean; meta: Meta; filters: Filter[]; sorts: Sort[]; hidden: number[]; hiddenRows?:number[]; excludedRows?:number[]; deletedColumns?:number[]; columnOrder?:number[]; columnFilter?:number[]; frozen: number; widths: Record<number, number>; selection: Selection | null; ranges?: Selection[]; scrollTop: number; scrollLeft: number; preview: boolean }
 export interface PaneSize { width?: number; height?: number }
 export interface Preferences { theme?: string; fontSize?: number; fontFamily?: string; accent?: string; previewPosition?: string; mergePosition?: string; dockSizes?: Partial<Record<'top'|'bottom'|'left'|'right', PaneSize>>; sidebarWidth?:number; recent?: string[] }
 declare global { interface Window { csv: {
@@ -28,6 +28,9 @@ declare global { interface Window { csv: {
   saveDocument(blocks:import('./data').MergeBlock[]): Promise<{path:string;size:number;assets:number}|null>;
   image(id:string,url:string):Promise<string>;
   saveTable(table: import('./data').TableData, format: string): Promise<{path:string;size:number}|null>;
+  analyzeMany(sources:(import('./analysis-types').AnalysisSource|{name:string;table:import('./analysis-types').SavedTable})[]):Promise<import('./analysis-types').AnalysisResult>;
+  saveAnalysis(document:import('./analysis-types').AnalysisDocument,format:'md'|'xlsx'):Promise<string|null>;
+  savePlot(data:string,format:'png'|'gif'|'obj',name:string):Promise<string|null>;
   saveChart(data:string, format:string): Promise<string|null>;
   export(id: string, options: Record<string, unknown>): Promise<{ path: string; size: number } | null>;
   clipboard(text: string): Promise<void>;
