@@ -6,7 +6,7 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.1.0-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.1.1-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
@@ -142,11 +142,11 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.0-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.1-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 
-コア／共有API契約／Excel・分析・全グラフ描画テスト57件、Electron UIテスト16件。実接続の検証には利用者のOAuth登録・アカウントが必要です。この作業環境ではLinuxでZIPを生成し、テストしています。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
+コア／共有API契約／Excel・分析・全グラフ描画テスト58件、Electron UIテスト16件。実接続の検証には利用者のOAuth登録・アカウントが必要です。この作業環境ではLinuxでZIPを生成し、テストしています。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
 
 100万レコード、約40.9 MiBの日本語CSVで索引生成約0.60秒、末尾10行の取得約1 ms、10万件へのフィルター＋数値ソート約2.27秒を測定しました。これは本環境の参考値です。詳細は [ベンチマーク結果](docs/benchmark.json) を参照してください。
 

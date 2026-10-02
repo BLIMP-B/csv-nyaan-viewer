@@ -79,19 +79,21 @@ function columnName(n) {
 }
 // Decimal string comparison avoids rounding long IDs or precise decimals.
 function decimalParts(value) {
-  const m = value.trim().match(/^([+-]?)(\d*)(?:\.(\d*))?$/);
-  if (!m || !(m[2] || m[3])) return null;
-  const whole = (m[2] || '0').replace(/^0+(?=\d)/, ''), fraction = (m[3] || '').replace(/0+$/, '');
-  return { sign: whole === '0' && !fraction ? 1 : m[1] === '-' ? -1 : 1, whole, fraction };
+  const raw=value.trim().replace(/^[￥¥$€£]\s*/,'').replace(/%$/,'').trim();
+  const text=/^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(raw)?raw.replaceAll(',',''):raw;
+  const m=text.match(/^([+-]?)(\d*)(?:\.(\d*))?(?:e([+-]?\d+))?$/i);
+  if(!m||!(m[2]||m[3]))return null;
+  const joined=(m[2]||'')+(m[3]||''),significant=joined.replace(/^0+/,'');
+  if(!significant)return {sign:1,zero:true,digits:'0',order:0n};
+  return {sign:m[1]==='-'?-1:1,zero:false,digits:significant.replace(/0+$/,''),order:BigInt(significant.length)+BigInt(m[4]||0)-BigInt((m[3]||'').length)};
 }
-function compareDecimal(a, b) {
-  const x = decimalParts(a), y = decimalParts(b);
-  if (!x || !y) return null;
-  if (x.sign !== y.sign) return x.sign - y.sign;
-  let result = x.whole.length - y.whole.length;
-  if (!result) result = x.whole < y.whole ? -1 : x.whole > y.whole ? 1 : 0;
-  if (!result) { const length = Math.max(x.fraction.length, y.fraction.length); const xf = x.fraction.padEnd(length, '0'), yf = y.fraction.padEnd(length, '0'); result = xf < yf ? -1 : xf > yf ? 1 : 0; }
-  return result === 0 ? 0 : result * x.sign;
+function compareDecimal(a,b) {
+  const x=decimalParts(a),y=decimalParts(b);if(!x||!y)return null;
+  if(x.zero||y.zero)return x.zero&&y.zero?0:x.zero?-y.sign:x.sign;
+  if(x.sign!==y.sign)return x.sign-y.sign;
+  let result=x.order<y.order?-1:x.order>y.order?1:0;
+  if(!result){const width=Math.max(x.digits.length,y.digits.length),xd=x.digits.padEnd(width,'0'),yd=y.digits.padEnd(width,'0');result=xd<yd?-1:xd>yd?1:0;}
+  return result===0?0:result*x.sign;
 }
 function makeMatcher(rule) {
   const value = String(rule.value ?? ''), sensitive = !!rule.caseSensitive;

@@ -47,7 +47,7 @@ app.whenReady().then(() => {
     { label: '操作', submenu: [{ label: 'コピー', accelerator: 'CmdOrCtrl+C', click: send('copy') }, { label: '全選択', accelerator: 'CmdOrCtrl+A', click: send('selectAll') }, { label: '検索', accelerator: 'CmdOrCtrl+F', click: send('find') }, { label: '次を検索', accelerator: 'F3', click: send('next') }, { label: '前を検索', accelerator: 'Shift+F3', click: send('previous') }, { label: '行・列へ移動', accelerator: 'CmdOrCtrl+G', click: send('goto') }] },
     { label: '表示', submenu: [{ label: 'グラフプレビュー', click: send('preview') }, { label: 'ファイル結合ペイン', click: send('merge') }, { label: 'グラフを画像として保存', click: send('saveChart') }, { label: 'テーマを切り替え', accelerator: 'CmdOrCtrl+Shift+L', click: send('theme') }, { role: 'togglefullscreen', label: '全画面' }] },
     { label:'共有',submenu:[{label:'選択・文書を共有',click:send('share')}]},{label:'接続',submenu:[{label:'アカウント接続設定',click:send('connections')}]},
-    { label: 'ヘルプ', submenu: [{ label: '操作ガイド', accelerator: 'F1', click: send('help') }, { label: 'CSV nyaan Viewerについて', click: () => dialog.showMessageBox(window, { title: 'CSV nyaan Viewer', message: 'CSV nyaan Viewer 1.1.0', detail: 'CSVを直接開く読み取り専用ビューワー。\n元ファイルへの書き込み・型変換は行いません。\nModern CSVとは独立したアプリです。' }) }] }
+    { label: 'ヘルプ', submenu: [{ label: '操作ガイド', accelerator: 'F1', click: send('help') }, { label: 'CSV nyaan Viewerについて', click: () => dialog.showMessageBox(window, { title: 'CSV nyaan Viewer', message: 'CSV nyaan Viewer 1.1.1', detail: 'CSVを直接開く読み取り専用ビューワー。\n元ファイルへの書き込み・型変換は行いません。\nModern CSVとは独立したアプリです。' }) }] }
   ]));
   window.loadFile(path.join(__dirname, '../dist/index.html'));
   window.webContents.once('did-finish-load', () => {
