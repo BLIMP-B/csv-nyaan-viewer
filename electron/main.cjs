@@ -7,6 +7,8 @@ const sharing=require('./sharing.cjs');
 const {openOnline}=require('./online.cjs');
 let onlineCache;
 let sBrowser;
+let apiProfiles;
+function connectionStatus(){const result=sharing.status();for(const [id,value] of Object.entries(result.providers)){const profile=apiProfiles?.get(id);if(profile)Object.assign(value,{avatar:profile.avatar,profileName:profile.name});}return result;}
 let window, nextId = 0, nextRequest = 0;
 const files = new Map();
 const profilePath=app.commandLine.getSwitchValue('user-data-dir');if(profilePath)app.setPath('userData',path.resolve(profilePath));
@@ -17,7 +19,7 @@ function request(entry, method, args) {
   return new Promise((resolve, reject) => { const requestId = ++nextRequest; entry.pending.set(requestId, { resolve, reject }); entry.worker.postMessage({ requestId, method, args }); });
 }
 function closeFile(id) { const entry = files.get(id); if (!entry) return; for (const p of entry.pending.values()) p.reject(new Error('処理がキャンセルされました。')); files.delete(id); entry.worker.terminate().finally(()=>{if(entry.online){try{fs.unlinkSync(entry.path);}catch{}}}); }
-function emit(command, payload) { window?.webContents.send(command, payload); }
+function emit(command, payload) { if(window&&!window.isDestroyed())window.webContents.send(command, payload); }
 async function openFile(filePath, options = {}) {
   if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) throw new Error('ファイルの絶対パスが必要です。');
   const id = String(++nextId), worker = new Worker(path.join(__dirname, 'worker.cjs'));
@@ -38,6 +40,7 @@ async function openFile(filePath, options = {}) {
 app.whenReady().then(() => {
   nativeTheme.themeSource = readSettings().theme === 'dark' ? 'dark' : 'light';
   sharing.init(app.getPath('userData'));onlineCache=fs.mkdtempSync(path.join(app.getPath('temp'),'csv-nyaan-online-'));
+  apiProfiles=require('./account-profiles.cjs').createApiProfiles({userData:app.getPath('userData'),accessToken:sharing.accessToken,fetch:net.fetch,nativeImage,connected:id=>!!sharing.status().providers[id]?.connected,notify:()=>emit('csv:connectionsChanged',connectionStatus())});
   sBrowser=require('./s-browser.cjs').createBrowserManager({electron:require('electron'),userData:app.getPath('userData'),tempDir:onlineCache,mainWindow:()=>window,resolveFile:id=>files.get(id),protectFile:protectSources,notify:accounts=>emit('csv:sAccounts',accounts)});
   const customIcon=path.join(app.getPath('userData'),'app-icon.png'),bundledIcon=path.join(__dirname,'../assets/icon.png');
   window = new BrowserWindow({ icon:fs.existsSync(customIcon)?customIcon:fs.existsSync(bundledIcon)?bundledIcon:undefined,width: 1440, height: 940, minWidth: 1000, minHeight: 560, titleBarStyle:'hidden', titleBarOverlay:{color:readSettings().theme==='dark'?'#242424':'#f5f5f5',symbolColor:readSettings().theme==='dark'?'#dedede':'#424242',height:34}, autoHideMenuBar:true, title: 'CSV nyaan Viewer', backgroundColor: nativeTheme.shouldUseDarkColors ? '#292929' : '#ffffff', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
@@ -107,11 +110,11 @@ ipcMain.handle('csv:saveChart', async (_, { data, format }) => {
   return result.filePath;
 });
 
-ipcMain.handle('csv:connections',()=>sharing.status());
-ipcMain.handle('csv:configureConnection',(_, {provider,config})=>{const result=sharing.configure(provider,config);emit('csv:connectionsChanged',result);return result;});
-ipcMain.handle('csv:login',async(_,provider)=>{const result=await sharing.login(provider,info=>emit('csv:auth',info));emit('csv:connectionsChanged',result);return result;});
+ipcMain.handle('csv:connections',()=>{const result=connectionStatus();for(const id of Object.keys(result.providers))apiProfiles?.refresh(id);return result;});
+ipcMain.handle('csv:configureConnection',(_, {provider,config})=>{sharing.configure(provider,config);if(config.access_token||config.webhook)apiProfiles?.clear(provider);const result=connectionStatus();emit('csv:connectionsChanged',result);apiProfiles?.refresh(provider);return result;});
+ipcMain.handle('csv:login',async(_,provider)=>{await sharing.login(provider,info=>emit('csv:auth',info));apiProfiles?.clear(provider);const result=connectionStatus();emit('csv:connectionsChanged',result);apiProfiles?.refresh(provider);return result;});
 ipcMain.handle('csv:cancelLogin',()=>sharing.cancelLogin());
-ipcMain.handle('csv:logout',(_,provider)=>{const result=sharing.logout(provider);emit('csv:connectionsChanged',result);return result;});
+ipcMain.handle('csv:logout',(_,provider)=>{sharing.logout(provider);apiProfiles?.clear(provider);const result=connectionStatus();emit('csv:connectionsChanged',result);return result;});
 ipcMain.handle('csv:share',(_,options)=>sharing.share(options));
 ipcMain.handle('csv:shareBrowser',(_,options)=>sharing.browser(options));
 

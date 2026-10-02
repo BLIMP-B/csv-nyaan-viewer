@@ -2,11 +2,12 @@
 const fs=require('node:fs'),path=require('node:path');
 const {PROVIDERS,SERVICES,service,provider,browserURL,onProviderSite,partitionFor,destination,nativeDestination}=require('./s-services.cjs');
 const {payload}=require('./s-payload.cjs');
+const {browserAvatar,validAvatar}=require('./account-profiles.cjs');
 const CHROME_HEIGHT=164;
 function createBrowserManager({electron,userData,tempDir,mainWindow,resolveFile,protectFile,notify}){
   const {BrowserWindow,WebContentsView,session,ipcMain,dialog,clipboard,shell,nativeTheme}=electron;
-  const statePath=path.join(userData,'s-accounts.json'),entries=new Map(),resources=new Set(),clearing=new Set(),initializedSessions=new Set();let accounts={};
-  try{const saved=JSON.parse(fs.readFileSync(statePath,'utf8'));for(const id of Object.keys(PROVIDERS)){const a=saved[id];if(a?.connected===true&&typeof a.label==='string')accounts[id]={provider:id,label:a.label.slice(0,60),connected:true,service:SERVICES.some(s=>s.id===a.service&&s.provider===id)?a.service:SERVICES.find(s=>s.provider===id).id,confirmedAt:typeof a.confirmedAt==='string'?a.confirmedAt:''};}}catch{}
+  const statePath=path.join(userData,'s-accounts.json'),entries=new Map(),resources=new Set(),clearing=new Set(),initializedSessions=new Set(),profileVersions=new Map();let accounts={};
+  try{const saved=JSON.parse(fs.readFileSync(statePath,'utf8'));for(const id of Object.keys(PROVIDERS)){const a=saved[id];if(a?.connected===true&&typeof a.label==='string')accounts[id]={provider:id,label:a.label.slice(0,60),connected:true,service:SERVICES.some(s=>s.id===a.service&&s.provider===id)?a.service:SERVICES.find(s=>s.provider===id).id,confirmedAt:typeof a.confirmedAt==='string'?a.confirmedAt:'',...(validAvatar(a.avatar)?{avatar:a.avatar}:{})};}}catch{}
   const list=()=>Object.keys(PROVIDERS).map(id=>accounts[id]||{provider:id,label:provider(id).name,connected:false});
   function persist(){fs.mkdirSync(userData,{recursive:true});const temporary=statePath+'.tmp';fs.writeFileSync(temporary,JSON.stringify(accounts,null,2));fs.renameSync(temporary,statePath);notify(list());for(const entry of entries.values())sendState(entry);}
   function browserSession(id){const ses=session.fromPartition(partitionFor(id));if(!initializedSessions.has(id)){initializedSessions.add(id);ses.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));ses.setPermissionCheckHandler(()=>false);ses.on('will-download',(_event,item)=>item.setSaveDialogOptions({title:'内部ブラウザからダウンロード',defaultPath:path.basename(item.getFilename())}));}return ses;}
@@ -14,6 +15,12 @@ function createBrowserManager({electron,userData,tempDir,mainWindow,resolveFile,
   function sendState(entry){if(!entry.window.isDestroyed())entry.window.webContents.send('s-browser:state',browserState(entry));}
   function report(entry,error){entry.error=String(error).replace(/^Error: /,'').slice(0,400);sendState(entry);}
   function releaseResource(resource){if(resource&&--resource.refs<=0){resources.delete(resource);fs.rmSync(resource.dir,{recursive:true,force:true});}}
+  async function refreshMissingAvatar(entry){
+    const id=entry.service.provider,wc=entry.view.webContents;
+    if(wc.isDestroyed()||entry.window.isDestroyed()||!accounts[id]||accounts[id].avatar||clearing.has(id)||!browserState(entry).canConfirm)return;
+    const version=profileVersions.get(id)||0,url=wc.getURL(),avatar=await browserAvatar(wc,id);
+    if(avatar&&!wc.isDestroyed()&&!entry.window.isDestroyed()&&accounts[id]&&!accounts[id].avatar&&!clearing.has(id)&&(profileVersions.get(id)||0)===version&&wc.getURL()===url&&browserState(entry).canConfirm){accounts[id]={...accounts[id],avatar};persist();}
+  }
   function create(s,resource,options={},popupOptions){
     if(clearing.has(s.provider))throw Error('このSアカウントはログアウト処理中です。');
     const customIcon=path.join(userData,'app-icon.png'),icon=fs.existsSync(customIcon)?customIcon:path.join(__dirname,'../assets/icon.png');
@@ -27,7 +34,7 @@ function createBrowserManager({electron,userData,tempDir,mainWindow,resolveFile,
     const navigation=(event,url)=>{try{browserURL(url);}catch(error){event.preventDefault();report(entry,error);}};
     wc.on('will-navigate',navigation);wc.on('will-redirect',navigation);
     wc.setWindowOpenHandler(({url})=>{try{if(url!=='about:blank')browserURL(url);}catch(error){report(entry,error);return {action:'deny'};}return {action:'allow',overrideBrowserWindowOptions:{webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true}},createWindow:popupOptions=>create(s,resource,options,{...popupOptions,initialURL:url}).view.webContents};});
-    wc.on('did-start-loading',()=>{entry.busy=true;entry.error='';sendState(entry);});wc.on('did-stop-loading',()=>{entry.busy=false;sendState(entry);});wc.on('did-navigate',()=>sendState(entry));wc.on('did-navigate-in-page',()=>sendState(entry));
+    wc.on('did-start-loading',()=>{entry.busy=true;entry.error='';sendState(entry);});wc.on('did-stop-loading',()=>{entry.busy=false;sendState(entry);clearTimeout(entry.profileTimer);entry.profileTimer=setTimeout(()=>refreshMissingAvatar(entry).catch(()=>{}),1200);});wc.on('did-navigate',()=>sendState(entry));wc.on('did-navigate-in-page',()=>sendState(entry));
     wc.on('did-fail-load',(_e,code,description,_url,isMainFrame)=>{if(isMainFrame&&code!==-3){entry.busy=false;report(entry,'ページを開けませんでした（'+code+'）。'+description+'。認証制限の場合は既存の「接続」または外部ブラウザを利用してください。');}});
     // Chromium's chooser interception supplies the actual input node. Remote pages
     // receive a file only after the user confirms it in a native application dialog.
@@ -42,7 +49,7 @@ function createBrowserManager({electron,userData,tempDir,mainWindow,resolveFile,
     const prepareChooser=async()=>{try{if(!wc.debugger.isAttached())wc.debugger.attach('1.3');await wc.debugger.sendCommand('Page.enable');await wc.debugger.sendCommand('Page.setInterceptFileChooserDialog',{enabled:true});}catch{if(!win.isDestroyed())report(entry,'共有ファイルを保存してから、サービス画面で添付してください。');}};
     wc.on('did-finish-load',prepareChooser);
     wc.on('close',()=>{if(!win.isDestroyed())win.close();});wc.on('destroyed',()=>{if(!win.isDestroyed())win.close();});
-    win.on('closed',()=>{entries.delete(chromeId);if(!wc.isDestroyed())wc.close();releaseResource(resource);});
+    win.on('closed',()=>{clearTimeout(entry.profileTimer);entries.delete(chromeId);if(!wc.isDestroyed())wc.close();releaseResource(resource);});
     if(!popupOptions?.webContents){const url=popupOptions?.initialURL||destination(s.id,{...options,text:resource?.text||''});if(url!=='about:blank')wc.loadURL(browserURL(url)).catch(error=>{if(!win.isDestroyed())report(entry,error);});}
     return entry;
   }
@@ -54,7 +61,7 @@ function createBrowserManager({electron,userData,tempDir,mainWindow,resolveFile,
     if(options.table||options.document?.length||options.fileId){const original=options.fileId?resolveFile(options.fileId):undefined;if(options.fileId&&!original)throw Error('共有元のファイルが閉じられています。');const data=await payload(options,original),dir=fs.mkdtempSync(path.join(tempDir,'s-share-'));try{const target=path.join(dir,data.name);fs.writeFileSync(target,data.bytes,{flag:'wx'});resource={...data,path:target,dir,refs:0};resources.add(resource);}catch(error){fs.rmSync(dir,{recursive:true,force:true});throw error;}}
     try{const entry=create(s,resource,options);return {browserId:entry.window.id,fileName:resource?.name,note:'S内部ブラウザを開きました。サービスの画面で添付・送信を確認してください。'};}catch(error){if(resource&&resource.refs===0){resources.delete(resource);fs.rmSync(resource.dir,{recursive:true,force:true});}throw error;}
   }
-  async function logout(id){provider(id);if(clearing.has(id))throw Error('ログアウト処理中です。');clearing.add(id);try{for(const entry of [...entries.values()])if(entry.service.provider===id)entry.window.destroy();const ses=browserSession(id);await ses.clearStorageData();await ses.clearCache();await ses.clearAuthCache();ses.flushStorageData();delete accounts[id];persist();return list();}finally{clearing.delete(id);}}
+  async function logout(id){provider(id);if(clearing.has(id))throw Error('ログアウト処理中です。');clearing.add(id);profileVersions.set(id,(profileVersions.get(id)||0)+1);try{for(const entry of [...entries.values()])if(entry.service.provider===id)entry.window.destroy();const ses=browserSession(id);await ses.clearStorageData();await ses.clearCache();await ses.clearAuthCache();ses.flushStorageData();delete accounts[id];persist();return list();}finally{clearing.delete(id);}}
   function mainSender(event){const main=mainWindow();if(!main||event.sender!==main.webContents||event.senderFrame!==event.sender.mainFrame)throw Error('S共有の操作元が不正です。');}
   function chromeSender(event){const entry=entries.get(event.sender.id);if(!entry||event.sender!==entry.window.webContents||event.senderFrame!==event.sender.mainFrame)throw Error('内部ブラウザの操作元が不正です。');return entry;}
   ipcMain.handle('csv:sAccounts',event=>{mainSender(event);return list();});ipcMain.handle('csv:sServices',event=>{mainSender(event);return SERVICES;});ipcMain.handle('csv:sOpen',(event,options)=>{mainSender(event);return open(options);});ipcMain.handle('csv:sLogout',(event,id)=>{mainSender(event);return logout(id);});
@@ -67,7 +74,14 @@ function createBrowserManager({electron,userData,tempDir,mainWindow,resolveFile,
       case 'reload':wc.reload();break;
       case 'navigate':await wc.loadURL(browserURL(value));break;
       case 'external':await shell.openExternal(browserURL(wc.getURL()));return {note:'外部ブラウザはS内部ブラウザとは別のログインを使用します。'};
-      case 'confirm':{if(clearing.has(entry.service.provider)||!browserState(entry).canConfirm)throw Error('ログイン完了後、接続先のサービス画面で確認してください。');if(typeof value!=='string'||value.length>60)throw Error('表示名は60文字以内です。');accounts[entry.service.provider]={provider:entry.service.provider,label:value.trim()||provider(entry.service.provider).name,connected:true,service:entry.service.id,confirmedAt:new Date().toISOString()};entry.view.webContents.session.flushStorageData();persist();return {note:'Sアカウントを登録しました。ログインの有効性はサービス画面で確認してください。'};}
+      case 'confirm':case 'profile':{
+        const id=entry.service.provider;if(clearing.has(id)||!browserState(entry).canConfirm)throw Error('ログイン完了後、接続先のサービス画面で確認してください。');
+        if(command==='confirm'&&(typeof value!=='string'||value.length>60))throw Error('表示名は60文字以内です。');if(command==='profile'&&!accounts[id])throw Error('先に「このログインを使用」で登録してください。');
+        const url=wc.getURL(),version=(profileVersions.get(id)||0)+1;profileVersions.set(id,version);const avatar=await browserAvatar(wc,id);
+        if(wc.isDestroyed()||entry.window.isDestroyed()||clearing.has(id)||profileVersions.get(id)!==version||wc.getURL()!==url||!browserState(entry).canConfirm)throw Error('画像の取得中に接続状態が変わりました。もう一度確認してください。');
+        accounts[id]=command==='confirm'?{provider:id,label:value.trim()||provider(id).name,connected:true,service:entry.service.id,confirmedAt:new Date().toISOString(),avatar}:{...accounts[id],avatar};
+        wc.session.flushStorageData();persist();return {note:(command==='confirm'?'Sアカウントを登録しました。':'プロフィール画像を更新しました。')+(avatar?'ユーザーの画像を表示します。':'画像を取得できないため、サービスのアイコンを表示します。')};
+      }
       case 'logout':{const answer=await dialog.showMessageBox(entry.window,{type:'question',message:provider(entry.service.provider).name+'のS接続からログアウトしますか？',detail:'S内部ブラウザのログイン情報を消去します。既存の「接続」と、他のブラウザ・アプリのログインは保持されます。',buttons:['ログアウト','キャンセル'],defaultId:1,cancelId:1});if(answer.response===0)await logout(entry.service.provider);break;}
       case 'copy':if(!entry.resource)throw Error('共有データがありません。');clipboard.writeText(entry.resource.text.slice(0,4*1024*1024));return {note:'本文をコピーしました。サービス画面へ貼り付けてください（最大4 Mi文字）。'};
       case 'save':{if(!entry.resource)throw Error('共有ファイルがありません。');const answer=await dialog.showSaveDialog(entry.window,{title:'共有ファイルを保存',defaultPath:entry.resource.name});if(!answer.canceled&&answer.filePath){protectFile(answer.filePath);fs.copyFileSync(entry.resource.path,answer.filePath);return {note:'共有ファイルを保存しました。'};}break;}

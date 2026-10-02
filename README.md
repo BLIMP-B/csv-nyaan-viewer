@@ -6,7 +6,7 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.5.1-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.5.2-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
@@ -161,6 +161,8 @@ Markdown / TXT間ではソースの内容を保持します。TXTからCSV / TSV
 
 アイコンをクリックするとログアウト確認を表示します。S接続と既存API接続が両方ある場合は、解除する接続をチェックボックスで選べます。Sログアウトはそのサービス群のブラウザ保存情報を消去し、既存のOAuth登録設定、他サービス、外部ブラウザ・アプリのログインは保持します。サービス群ごとに1つのブラウザ接続を管理します。
 
+アカウント欄は登録数1〜5件でスクロールバーを表示せず、取得できた本人のプロフィール画像を丸く表示します。画像なし・取得失敗・権限不足の場合は各サービスのアイコンを表示します。S接続では本人のアカウントボタンの画像だけを取り込み、投稿・メンバー一覧などの画像を参照しません。画像は次回起動時も保持し、内部ブラウザの「画像を更新」で再取得できます。旧版で登録したS接続はサービス画面を再び開くと画像の取得を試みます。既存API接続ではGoogle・Microsoft・GitHub、本人参照権限のあるSlackユーザートークンから取得を試みます。Slack／DiscordのBot・Webhookはユーザー画像の対象外です。
+
 従来のAPIによる共有は最上段の「接続」を開いて登録します。初期状態にはOAuthクライアント情報やトークンを含みません。こちらはアプリ登録が必要です。
 
 接続手順・サービスごとの共有内容は [接続ガイド](docs/connections.md) を参照してください。メールは添付付き下書きを作成し、チャットの直接共有は画面で指定した宛先へ投稿します。ブロック文書は.md本文と画像をZIPにまとめて共有できます。Sheets／Excelは表だけ、GitHub Gistは.md本文だけを共有します。ブラウザ／アプリで開く方法は自動アップロードとは異なります。
@@ -198,11 +200,11 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.5.1-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.5.2-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 
-コア／共有API契約／Excel・分析・全グラフ描画テスト109件、Electron UIテスト34件。OBJは球体の中心・半径・閉じた形状・面の向き・頂点参照、矢印付き軸・日本語の軸名メッシュを確認します。S内部ブラウザの操作・セッション保存・消去・ファイル選択・権限制限は架空のサービス画面で検証します。実サービスのログイン・送信は未検証で、各サービスの認証制限や組織設定に依存します。既存API接続の検証には利用者のOAuth登録・アカウントが必要です。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
+コア／共有API契約／Excel・分析・全グラフ描画テスト117件、Electron UIテスト35件。OBJは球体の中心・半径・閉じた形状・面の向き・頂点参照、矢印付き軸・日本語の軸名メッシュを確認します。S内部ブラウザの操作・セッション保存・消去・ファイル選択・権限制限は架空のサービス画面で検証します。実サービスのログイン・送信は未検証で、各サービスの認証制限や組織設定に依存します。既存API接続の検証には利用者のOAuth登録・アカウントが必要です。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
 
 100万レコード、約40.9 MiBの日本語CSVで索引生成約0.60秒、末尾10行の取得約1 ms、10万件へのフィルター＋数値ソート約2.27秒を測定しました。これは本環境の参考値です。詳細は [ベンチマーク結果](docs/benchmark.json) を参照してください。
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, LogIn, Send, Settings, ExternalLink, X, Share2 } from 'lucide-react';
 import type { TableData, MergeBlock } from './data';
-export interface ConnectionStatus { secureStorage:boolean; providers:Record<string,{clientId?:string;tenant?:string;connected:boolean;hasSecret:boolean}> }
+export interface ConnectionStatus { secureStorage:boolean; providers:Record<string,{clientId?:string;tenant?:string;connected:boolean;hasSecret:boolean;avatar?:string;profileName?:string}> }
 export interface ShareResult { url?:string;id?:string;note?:string }
 const SERVICES=[['gmail','Gmail','google'],['chat','Google Chat','google'],['sheets','Google スプレッドシート','google'],['drive','Google Drive','google'],['onedrive','OneDrive','microsoft'],['excel','Excel オンライン','microsoft'],['outlook','Outlook メール','microsoft'],['discord','Discord','discord'],['slack','Slack','slack'],['github','GitHub Gist','github'],['teams','Microsoft Teams（追加）','microsoft']];
 const PROVIDERS=[['google','Google'],['microsoft','Microsoft'],['github','GitHub'],['slack','Slack'],['discord','Discord']];
