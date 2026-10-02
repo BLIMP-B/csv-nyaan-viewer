@@ -1,9 +1,11 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, clipboard, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard, Menu, shell, net, nativeImage } = require('electron');
 const { Worker } = require('node:worker_threads');
 const path = require('node:path');
 const fs = require('node:fs');
 const sharing=require('./sharing.cjs');
+const {openOnline}=require('./online.cjs');
+let onlineCache;
 let window, nextId = 0, nextRequest = 0;
 const files = new Map();
 const profilePath=app.commandLine.getSwitchValue('user-data-dir');if(profilePath)app.setPath('userData',path.resolve(profilePath));
@@ -13,12 +15,12 @@ function writeSettings(settings) { fs.mkdirSync(app.getPath('userData'), { recur
 function request(entry, method, args) {
   return new Promise((resolve, reject) => { const requestId = ++nextRequest; entry.pending.set(requestId, { resolve, reject }); entry.worker.postMessage({ requestId, method, args }); });
 }
-function closeFile(id) { const entry = files.get(id); if (!entry) return; for (const p of entry.pending.values()) p.reject(new Error('処理がキャンセルされました。')); files.delete(id); entry.worker.terminate(); }
+function closeFile(id) { const entry = files.get(id); if (!entry) return; for (const p of entry.pending.values()) p.reject(new Error('処理がキャンセルされました。')); files.delete(id); entry.worker.terminate().finally(()=>{if(entry.online){try{fs.unlinkSync(entry.path);}catch{}}}); }
 function emit(command, payload) { window?.webContents.send(command, payload); }
 async function openFile(filePath, options = {}) {
   if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) throw new Error('ファイルの絶対パスが必要です。');
   const id = String(++nextId), worker = new Worker(path.join(__dirname, 'worker.cjs'));
-  const entry = { worker, path: filePath, pending: new Map() }; files.set(id, entry);
+  const entry = { worker, path: filePath, pending: new Map(),online:options.online,source:options.source }; files.set(id, entry);
   worker.on('message', msg => {
     if (typeof msg.progress === 'number') { emit('csv:progress', { id, value: msg.progress }); return; }
     const p = entry.pending.get(msg.requestId); if (!p) return;
@@ -28,13 +30,14 @@ async function openFile(filePath, options = {}) {
   worker.on('exit', code => { for (const p of entry.pending.values()) p.reject(new Error(`読み込み処理が終了しました (${code})。`)); entry.pending.clear(); });
   try {
     const meta = await request(entry, 'open', { path: filePath, options });
-    const prefs = readSettings(); prefs.recent = [filePath, ...(prefs.recent || []).filter(p => p !== filePath)].slice(0, 15); writeSettings(prefs);
-    return { id, ...meta };
+    const prefs = readSettings(); if(!options.online)prefs.recent = [filePath, ...(prefs.recent || []).filter(p => p !== filePath)].slice(0, 15); writeSettings(prefs);
+    return { id, ...meta,...(entry.source?{sourceUrl:entry.source.sourceUrl,name:entry.source.name}:{}) };
   } catch (error) { closeFile(id); throw error; }
 }
 app.whenReady().then(() => {
-  sharing.init(app.getPath('userData'));
-  window = new BrowserWindow({ width: 1440, height: 940, minWidth: 1000, minHeight: 560, titleBarStyle:'hidden', titleBarOverlay:{color:readSettings().theme==='dark'?'#242424':'#f5f5f5',symbolColor:readSettings().theme==='dark'?'#dedede':'#424242',height:34}, autoHideMenuBar:true, title: 'CSV nyaan Viewer', backgroundColor: '#f4f6f9', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  sharing.init(app.getPath('userData'));onlineCache=fs.mkdtempSync(path.join(app.getPath('temp'),'csv-nyaan-online-'));
+  const customIcon=path.join(app.getPath('userData'),'app-icon.png'),bundledIcon=path.join(__dirname,'../assets/icon.png');
+  window = new BrowserWindow({ icon:fs.existsSync(customIcon)?customIcon:fs.existsSync(bundledIcon)?bundledIcon:undefined,width: 1440, height: 940, minWidth: 1000, minHeight: 560, titleBarStyle:'hidden', titleBarOverlay:{color:readSettings().theme==='dark'?'#242424':'#f5f5f5',symbolColor:readSettings().theme==='dark'?'#dedede':'#424242',height:34}, autoHideMenuBar:true, title: 'CSV nyaan Viewer', backgroundColor: '#f4f6f9', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   window.setMenuBarVisibility(false);
   window.webContents.setWindowOpenHandler(({ url }) => url === 'about:blank' ? { action: 'allow', overrideBrowserWindowOptions: { width: 900, height: 550, minWidth: 420, minHeight: 280, autoHideMenuBar: true, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } } } : { action: 'deny' });
   window.webContents.on('will-navigate', event => event.preventDefault());
@@ -44,24 +47,26 @@ app.whenReady().then(() => {
     { label: '操作', submenu: [{ label: 'コピー', accelerator: 'CmdOrCtrl+C', click: send('copy') }, { label: '全選択', accelerator: 'CmdOrCtrl+A', click: send('selectAll') }, { label: '検索', accelerator: 'CmdOrCtrl+F', click: send('find') }, { label: '次を検索', accelerator: 'F3', click: send('next') }, { label: '前を検索', accelerator: 'Shift+F3', click: send('previous') }, { label: '行・列へ移動', accelerator: 'CmdOrCtrl+G', click: send('goto') }] },
     { label: '表示', submenu: [{ label: 'グラフプレビュー', click: send('preview') }, { label: 'ファイル結合ペイン', click: send('merge') }, { label: 'グラフを画像として保存', click: send('saveChart') }, { label: 'テーマを切り替え', accelerator: 'CmdOrCtrl+Shift+L', click: send('theme') }, { role: 'togglefullscreen', label: '全画面' }] },
     { label:'共有',submenu:[{label:'選択・文書を共有',click:send('share')}]},{label:'接続',submenu:[{label:'アカウント接続設定',click:send('connections')}]},
-    { label: 'ヘルプ', submenu: [{ label: '操作ガイド', accelerator: 'F1', click: send('help') }, { label: 'CSV nyaan Viewerについて', click: () => dialog.showMessageBox(window, { title: 'CSV nyaan Viewer', message: 'CSV nyaan Viewer 1.0.2', detail: 'CSVを直接開く読み取り専用ビューワー。\n元ファイルへの書き込み・型変換は行いません。\nModern CSVとは独立したアプリです。' }) }] }
+    { label: 'ヘルプ', submenu: [{ label: '操作ガイド', accelerator: 'F1', click: send('help') }, { label: 'CSV nyaan Viewerについて', click: () => dialog.showMessageBox(window, { title: 'CSV nyaan Viewer', message: 'CSV nyaan Viewer 1.1.0', detail: 'CSVを直接開く読み取り専用ビューワー。\n元ファイルへの書き込み・型変換は行いません。\nModern CSVとは独立したアプリです。' }) }] }
   ]));
   window.loadFile(path.join(__dirname, '../dist/index.html'));
   window.webContents.once('did-finish-load', () => {
-    const paths = process.argv.slice(1).filter(arg => !arg.startsWith('-') && /\.(csv|tsv|txt|psv|md)$/i.test(arg));
+    const paths = process.argv.slice(1).filter(arg => !arg.startsWith('-') && /\.(csv|tsv|txt|psv|md|xlsx|xls|xlsm|xlsb|xltx|xltm|xlt|xlam|xla|ods|fods|xml)$/i.test(arg));
     if (paths.length) emit('csv:paths', paths.map(p => path.resolve(p)));
   });
   window.on('closed', () => { for (const id of files.keys()) closeFile(id); window = null; });
 });
-ipcMain.handle('csv:dialog', async () => (await dialog.showOpenDialog(window, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'CSV / 区切りテキスト', extensions: ['csv','tsv','txt','psv','md'] }, { name: 'すべてのファイル', extensions: ['*'] }] })).filePaths);
+ipcMain.handle('csv:dialog', async () => (await dialog.showOpenDialog(window, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'CSV / Excel / Markdown / Text', extensions: ['csv','tsv','txt','psv','md','xlsx','xls','xlsm','xlsb','xltx','xltm','xlt','xlam','xla','ods','fods','xml'] }, { name: 'すべてのファイル', extensions: ['*'] }] })).filePaths);
+ipcMain.handle('csv:openUrl',async(_,url)=>{const source=await openOnline(url,{fetch:net.fetch,accessToken:sharing.accessToken,cacheDir:onlineCache});try{return await openFile(source.path,{...source.options,online:true,source});}catch(error){try{fs.unlinkSync(source.path);}catch{}throw error;}});
 ipcMain.handle('csv:open', (_, args) => openFile(args.path, args.options));
 ipcMain.handle('csv:close', (_, id) => closeFile(id));
 ipcMain.handle('csv:cancel', () => { for (const id of files.keys()) if (files.get(id).pending.size) closeFile(id); });
-ipcMain.handle('csv:request', (_, { id, method, args }) => { if (!['configure','page','find','copy','text','selection'].includes(method)) throw new Error('未対応の操作です。'); const entry = files.get(id); if (!entry) throw new Error('ファイルが閉じられています。再度開いてください。'); return request(entry, method, args); });
+ipcMain.handle('csv:request', (_, { id, method, args }) => { if (!['configure','page','find','copy','text','selection','excludeSelection','selectedSources','sortColumns','move','analyze'].includes(method)) throw new Error('未対応の操作です。'); const entry = files.get(id); if (!entry) throw new Error('ファイルが閉じられています。再度開いてください。'); return request(entry, method, args); });
 ipcMain.handle('csv:clipboard', (_, text) => { if (typeof text === 'string') clipboard.writeText(text); });
-ipcMain.handle('csv:preferences', (_, patch) => { const settings = readSettings(); if (patch && typeof patch === 'object') { if(patch.theme&&window?.setTitleBarOverlay)window.setTitleBarOverlay({color:patch.theme==='dark'?'#242424':'#f5f5f5',symbolColor:patch.theme==='dark'?'#dedede':'#424242',height:34}); for (const key of ['theme','fontSize','fontFamily','accent','previewPosition','mergePosition','dockSizes']) if (key in patch) settings[key] = patch[key]; writeSettings(settings); } return settings; });
+ipcMain.handle('csv:preferences', (_, patch) => { const settings = readSettings(); if (patch && typeof patch === 'object') { if(patch.theme&&window?.setTitleBarOverlay)window.setTitleBarOverlay({color:patch.theme==='dark'?'#242424':'#f5f5f5',symbolColor:patch.theme==='dark'?'#dedede':'#424242',height:34}); for (const key of ['theme','fontSize','fontFamily','accent','previewPosition','mergePosition','dockSizes','sidebarWidth']) if (key in patch) settings[key] = patch[key]; writeSettings(settings); } return settings; });
 ipcMain.handle('csv:reveal', (_, filePath) => shell.showItemInFolder(filePath));
 app.on('window-all-closed', () => app.quit());
+app.on('will-quit',()=>{if(onlineCache)try{fs.rmSync(onlineCache,{recursive:true,force:true});}catch{}});
 
 ipcMain.handle('csv:export', async (_, { id, options }) => {
   const entry = files.get(id); if (!entry) throw new Error('ファイルが閉じられています。');
@@ -130,3 +135,9 @@ ipcMain.handle('csv:image',(_, {id,url})=>{
   if(!target.startsWith(root+path.sep)||!/^\.(png|jpe?g|gif|webp)$/i.test(path.extname(target))||fs.statSync(target).size>16*1024*1024)throw new Error('この画像は表示できません。');
   const type={'.png':'png','.jpg':'jpeg','.jpeg':'jpeg','.gif':'gif','.webp':'webp'}[path.extname(target).toLowerCase()];return 'data:image/'+type+';base64,'+fs.readFileSync(target).toString('base64');
 });
+
+ipcMain.handle('csv:chooseIcon',async()=>{
+  const result=await dialog.showOpenDialog(window,{title:'アプリアイコンを選択',properties:['openFile'],filters:[{name:'PNG / ICO',extensions:['png','ico']}]});if(result.canceled||!result.filePaths[0])return null;
+  const source=result.filePaths[0];if(fs.statSync(source).size>16*1024*1024)throw Error('アイコン画像は16 MiB以内です。');const image=nativeImage.createFromPath(source);if(image.isEmpty())throw Error('アイコン画像を読み込めませんでした。');const resized=image.resize({width:256,height:256,quality:'best'}),target=path.join(app.getPath('userData'),'app-icon.png');fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,resized.toPNG());window.setIcon(resized);return resized.toDataURL();
+});
+ipcMain.handle('csv:icon',()=>{const target=path.join(app.getPath('userData'),'app-icon.png'),bundled=path.join(__dirname,'../assets/icon.png');const source=fs.existsSync(target)?target:bundled;return fs.existsSync(source)?nativeImage.createFromPath(source).toDataURL():null;});

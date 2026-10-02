@@ -2,6 +2,8 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 const on = (channel, callback) => { const handler = (_, value) => callback(value); ipcRenderer.on(channel, handler); return () => ipcRenderer.removeListener(channel, handler); };
 contextBridge.exposeInMainWorld('csv', {
+  icon:()=>ipcRenderer.invoke('csv:icon'),
+  chooseIcon:()=>ipcRenderer.invoke('csv:chooseIcon'),
   openExternal: url => ipcRenderer.invoke('csv:openExternal', url),
   connections: () => ipcRenderer.invoke('csv:connections'),
   configureConnection: (provider, config) => ipcRenderer.invoke('csv:configureConnection', { provider, config }),
@@ -12,6 +14,7 @@ contextBridge.exposeInMainWorld('csv', {
   shareBrowser: options => ipcRenderer.invoke('csv:shareBrowser', options),
   onAuth: callback => on('csv:auth', callback),
   dialog: () => ipcRenderer.invoke('csv:dialog'),
+  openUrl: url => ipcRenderer.invoke('csv:openUrl',url),
   open: (path, options) => ipcRenderer.invoke('csv:open', { path, options }),
   saveDocument: blocks => ipcRenderer.invoke('csv:saveDocument',blocks),
   image: (id,url) => ipcRenderer.invoke('csv:image',{id,url}),

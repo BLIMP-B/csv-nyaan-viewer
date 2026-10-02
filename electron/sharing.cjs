@@ -28,9 +28,9 @@ async function api(url,options={}){
 }
 const form=data=>({method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(data).toString()});
 function endpoints(provider){
-  if(provider==='google')return {authorize:'https://accounts.google.com/o/oauth2/v2/auth',token:'https://oauth2.googleapis.com/token',scope:'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/chat.messages.create'};
+  if(provider==='google')return {authorize:'https://accounts.google.com/o/oauth2/v2/auth',token:'https://oauth2.googleapis.com/token',scope:'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/chat.messages.create'};
   const tenant=encodeURIComponent(configs.microsoft?.tenant||'common');
-  return {authorize:`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`,token:`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,scope:'offline_access User.Read Files.ReadWrite Mail.ReadWrite'};
+  return {authorize:`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`,token:`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,scope:'offline_access User.Read Files.ReadWrite Files.Read.All Mail.ReadWrite'};
 }
 let activeLogin;
 async function login(provider,notify){
@@ -161,4 +161,4 @@ async function browser(options){
   const apps={outlook:'mailto:'+encodeURIComponent(recipient)+'?subject='+encodeURIComponent(title)+'&body='+encodeURIComponent(body),discord:'discord://',slack:'slack://open',github:/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(recipient)?'x-github-client://openRepo/https://github.com/'+recipient:null};
   const url=options.native?apps[service]:urls[service];if(!url)throw new Error('このサービスはブラウザで開いてください。');await shell.openExternal(url);return {note:'共有先を開きました。ファイルの自動添付・アップロードは行っていません。'};
 }
-module.exports={init,status,configure,login,cancelLogin,logout,share,browser};
+module.exports={init,status,configure,login,cancelLogin,logout,share,browser,accessToken:token};

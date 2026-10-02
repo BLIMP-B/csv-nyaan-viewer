@@ -22,7 +22,7 @@ async function packageRelease() {
       archive.file('csv-viewer/' + relative.split(path.sep).join('/'), fs.readFileSync(full), { date: stat.mtime, unixPermissions: 0o100644 });
     }
   }
-  for (const item of ['.github', '.gitignore', 'LICENSE', 'README.md', 'docs', 'electron', 'index.html', 'package.json', 'package-lock.json', 'playwright.config.ts', 'samples', 'scripts', 'src', 'tests', 'tsconfig.json', 'vite.config.ts']) add(item);
+  for (const item of ['.github', '.gitignore', 'LICENSE', 'README.md', 'assets', 'docs', 'electron', 'electron-builder.config.cjs', 'index.html', 'package.json', 'package-lock.json', 'playwright.config.ts', 'samples', 'scripts', 'src', 'tests', 'tsconfig.json', 'vite.config.ts']) add(item);
   const source = path.join(destination, `${prefix}-source.zip`);
   fs.writeFileSync(source, await archive.generateAsync({ type: 'nodebuffer', platform: 'UNIX', compression: 'DEFLATE', compressionOptions: { level: 9 } }));
   const lines = [];

@@ -234,12 +234,16 @@ class CsvFile {
     this.checkChanged();
     const headerRows = Math.max(0, Math.min(30, this.starts.length, options.headerRows ?? this.headerRows));
     const filters = options.filters ?? this.filters, sorts = options.sorts ?? this.sorts;
+    const excludedRows = options.excludedRows ?? this.excludedRows ?? [];
+    if (!Array.isArray(excludedRows) || excludedRows.some(r=>!Number.isInteger(r)||r<0||r>=this.starts.length)) throw new Error('削除対象の行が不正です。');
+    const excluded = new Set(excludedRows);
     if (!Array.isArray(filters) || filters.length > 30 || !Array.isArray(sorts) || sorts.length > 8) throw new Error('条件が多すぎます。');
     const matchers = filters.map(rule => ({ rule, match: makeMatcher(rule) }));
     let view = null;
-    if (filters.length || sorts.length) {
+    if (filters.length || sorts.length || excluded.size) {
       const indices = [];
       for (let r = headerRows; r < this.starts.length; r++) {
+        if (excluded.has(r)) continue;
         const row = this.row(r);
         if (matchers.every(({rule, match}) => rule.column === -1 ? row.some(match) : match(row[rule.column] ?? ''))) indices.push(r);
         if (r % 20000 === 0) progress(r / Math.max(this.starts.length, 1) * 0.7);
@@ -260,8 +264,32 @@ class CsvFile {
       view = Uint32Array.from(indices);
     }
     // Commit only after all validation and computation succeed.
-    this.headerRows = headerRows; this.filters = filters; this.sorts = sorts; this.view = view;
+    this.headerRows = headerRows; this.filters = filters; this.sorts = sorts; this.excludedRows=excludedRows; this.view = view;
     progress(1); return this.metadata();
+  }
+  excludeSelection(ranges, progress) {
+    const removed=new Set(this.excludedRows||[]);
+    for(const s of ranges.slice(0,100))for(let r=Math.max(0,Math.min(s.row0,s.row1));r<=Math.min(this.count-1,Math.max(s.row0,s.row1));r++)removed.add(this.sourceIndex(r));
+    return this.configure({excludedRows:[...removed]},progress);
+  }
+  selectedSources(ranges) {
+    const sources=new Set();
+    for(const s of ranges.slice(0,100))for(let r=Math.max(0,Math.min(s.row0,s.row1));r<=Math.min(this.count-1,Math.max(s.row0,s.row1));r++)sources.add(this.sourceIndex(r));
+    return [...sources];
+  }
+  sortColumns(rowIndex,direction,columns) {
+    const row=this.row(this.sourceIndex(rowIndex)),collator=new Intl.Collator('ja',{numeric:true,sensitivity:'variant'});
+    return [...columns].sort((a,b)=>{const n=compareDecimal(row[a]||'',row[b]||'');const value=n??collator.compare(row[a]||'',row[b]||'');return (direction==='desc'?-value:value)||a-b;});
+  }
+  moveCell({row,column,dr,dc,columns}) {
+    const list=columns||Array.from({length:this.columns},(_,i)=>i), current=dc?list.indexOf(column):row, count=dc?list.length:this.count, step=dc||dr;
+    const value=i=>dc?this.row(this.sourceIndex(row))[list[i]]:this.row(this.sourceIndex(i))[column];
+    const present=i=>!!value(i)?.trim(),boundary=step>0?count-1:0;
+    let next=current+step;
+    if(next<0||next>=count)next=boundary;
+    else if(present(current)&&present(next)){while(next+step>=0&&next+step<count&&present(next+step))next+=step;}
+    else {while(next>=0&&next<count&&!present(next))next+=step;if(next<0||next>=count)next=boundary;}
+    return {row:dc?row:next,column:dc?list[next]:column};
   }
   page(start, limit = 120) {
     this.checkChanged(); start = Math.max(0, Math.min(this.count, Math.floor(start))); limit = Math.max(0, Math.min(250, Math.floor(limit)));
@@ -282,7 +310,7 @@ class CsvFile {
       if (++attempts >= this.count * this.columns) return null;
     }
   }
-  copy(selection, delimiter = '\t') {
+  copy(selection, delimiter = '\t', columns) {
     this.checkChanged();
     const r0 = Math.max(0, Math.min(selection.row0, selection.row1)), r1 = Math.min(this.count - 1, Math.max(selection.row0, selection.row1));
     const c0 = Math.max(0, Math.min(selection.col0, selection.col1)), c1 = Math.min(this.columns - 1, Math.max(selection.col0, selection.col1));
@@ -291,19 +319,20 @@ class CsvFile {
     const lines = []; let size = 0;
     for (let r = r0; r <= r1; r++) {
       const row = this.row(this.sourceIndex(r)); const cells = [];
-      for (let c = c0; c <= c1; c++) cells.push(quote(row[c] || ''));
+      for (const c of (columns||Array.from({length:c1-c0+1},(_,i)=>c0+i)).filter(c=>c>=c0&&c<=c1)) cells.push(quote(row[c] || ''));
       const line = cells.join(delimiter); size += line.length;
       if (size > 16 * BLOCK) throw new Error('コピー内容が16 Mi文字を超えています。範囲を小さくしてください。');
       lines.push(line);
     }
     return lines.join('\r\n');
   }
-  selectionTable(selection, maxCells = 100000, sample = false, infer = false) {
+  selectionTable(selection, maxCells = 100000, sample = false, infer = false, columns) {
     this.checkChanged();
     const ranges = (Array.isArray(selection) ? selection : [selection]).filter(Boolean).slice(0,100).map(s=>({r0:Math.max(0,Math.min(s.row0,s.row1)),r1:Math.min(this.count-1,Math.max(s.row0,s.row1)),c0:Math.max(0,Math.min(s.col0,s.col1)),c1:Math.min(this.columns-1,Math.max(s.col0,s.col1))}));
     if (!ranges.length) return {headers:[],rows:[]};
     const colSet=new Set(); for(const range of ranges)for(let c=range.c0;c<=range.c1;c++)colSet.add(c);
-    const cols=[...colSet].sort((a,b)=>a-b), rowSet=new Set();
+    const cols=columns?columns.filter(c=>colSet.has(c)):[...colSet].sort((a,b)=>a-b), rowSet=new Set();
+    if(!cols.length)return {headers:[],rows:[]};
     const rowCap=Math.floor(maxCells/Math.max(cols.length,1));let truncated=false;
     // Enforce a bound before materializing a potentially enormous selection.
     for(const range of [...ranges].sort((a,b)=>a.r0-b.r0))for(let r=range.r0;r<=range.r1;r++) {if(rowSet.has(r))continue;if(rowSet.size>=rowCap){truncated=true;break;}rowSet.add(r);}
@@ -327,6 +356,17 @@ class CsvFile {
     }
     return {headers,rows,total:rows.length*cols.length,truncated,inferred};
   }
+  analysisSample(selections, all=false,limits={}) {
+    this.checkChanged();const populationRows=all?this.starts.length-this.headerRows:this.count;
+    const ranges=all?[{row0:0,row1:populationRows-1,col0:0,col1:this.columns-1}]:(Array.isArray(selections)?selections:[selections]).filter(Boolean).slice(0,100);
+    const segments=ranges.map(s=>[Math.max(0,Math.min(s.row0,s.row1)),Math.min(populationRows-1,Math.max(s.row0,s.row1))]).filter(([a,b])=>a<=b).sort((a,b)=>a[0]-b[0]);
+    const union=[];for(const [a,b]of segments){const last=union.at(-1);if(last&&a<=last[1]+1)last[1]=Math.max(last[1],b);else union.push([a,b]);}
+    const total=union.reduce((s,[a,b])=>s+b-a+1,0),colSet=new Set();for(const s of ranges)for(let c=Math.max(0,Math.min(s.col0,s.col1));c<=Math.min(this.columns-1,Math.max(s.col0,s.col1));c++)colSet.add(c);
+    const allCols=[...colSet].sort((a,b)=>a-b),cols=allCols.length<=256?allCols:Array.from({length:256},(_,i)=>allCols[Math.round(i*(allCols.length-1)/255)]);
+    const n=Math.min(total,limits.rows??5000,Math.floor((limits.cells??250000)/Math.max(1,cols.length))),rows=[],sourceRows=[];let segment=0,offset=0;
+    for(let i=0;i<n;i++){const ordinal=n===1?0:Math.floor(i*(total-1)/(n-1));while(segment<union.length-1&&ordinal>=offset+union[segment][1]-union[segment][0]+1){offset+=union[segment][1]-union[segment][0]+1;segment++;}const r=union[segment][0]+ordinal-offset,source=all?r+this.headerRows:this.sourceIndex(r),row=this.row(source);rows.push(cols.map(c=>all||ranges.some(s=>r>=Math.min(s.row0,s.row1)&&r<=Math.max(s.row0,s.row1)&&c>=Math.min(s.col0,s.col1)&&c<=Math.max(s.col0,s.col1))?row[c]||'':''));sourceRows.push(source+1);}
+    return {headers:cols.map(c=>this.metadata().headers[c]),rows,sourceRows,populationRows:total,populationColumns:allCols.length,truncated:n<total||cols.length<allCols.length};
+  }
   text() {
     this.checkChanged();
     if (this.size > 16 * BLOCK) throw new Error('プレビューは16 MiB以内です。ソース表示で大容量ファイルを閲覧してください。');
@@ -346,7 +386,7 @@ class CsvFile {
     let out;
     try {
       out = fs.openSync(temp, 'wx');
-      const encoding = options.encoding === 'source' ? this.encoding : 'utf8';
+      const encoding = options.encoding === 'source' && this.encoding!=='workbook' ? this.encoding : 'utf8';
       const write = value => fs.writeSync(out, iconv.encode(value, encoding));
       if (options.bom) fs.writeSync(out, iconv.encode('\ufeff', encoding));
       if (this.literal && (format === 'txt' || format === 'md')) {
@@ -375,13 +415,13 @@ class CsvFile {
           if (!rows.length) throw new Error('Markdownに表がありません。ソース行としての出力を選んでください。');
         }
         const current = options.scope === 'view';
-        if (options.scope === 'selection' && (options.selections || options.selection)) { const table = this.selectionTable(options.selections || options.selection, 1000000); rows = [table.headers, ...table.rows]; }
+        if (options.scope === 'selection' && (options.selections || options.selection)) { const table = this.selectionTable(options.selections || options.selection, 1000000, false, false, options.columns); rows = [table.headers, ...table.rows]; }
         const count = rows ? rows.length : current ? this.headerRows + this.count : this.starts.length;
-        const getRow = n => rows ? rows[n] : this.row(current && n >= this.headerRows ? this.sourceIndex(n - this.headerRows) : n);
+        const getRow = n => {const row=rows?rows[n]:this.row(current&&n>=this.headerRows?this.sourceIndex(n-this.headerRows):n);return !rows&&current&&options.columns?options.columns.map(c=>row[c]||''):row;};
         const delimiter = format === 'csv' ? ',' : '\t';
         const quote = s => s.includes(delimiter) || /["\r\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s;
         const md = s => s.replaceAll('\\', '\\\\').replaceAll('|', '\\|').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replace(/\r\n|\r|\n/g, '<br>');
-        const width = rows ? Math.max(...rows.map(r => r.length)) : this.columns;
+        const width = rows ? Math.max(0,...rows.map(r => r.length)) : current&&options.columns?options.columns.length:this.columns;
         for (let r = 0; r < count; r++) {
           const row = getRow(r); const cells = Array.from({ length: width }, (_, c) => row[c] || '');
           if (format === 'md') {

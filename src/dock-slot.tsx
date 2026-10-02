@@ -14,7 +14,7 @@ export function DockSlot({ position, size = {}, onResize, children }: { position
   const ref = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<PaneSize | null>(null);
   const [limits, setLimits] = useState({ width: 1600, height: 600 });
-  const drag = useRef<{ x: number; y: number; width: number; height: number; direction: Direction; size: PaneSize; next: PaneSize; element: HTMLElement; previousCursor: string; previousSelect: string } | null>(null);
+  const drag = useRef<{ x: number; y: number; width: number; height: number; direction: Direction; widthEdge: 'left'|'right'; heightEdge: 'top'|'bottom'; size: PaneSize; next: PaneSize; element: HTMLElement; previousCursor: string; previousSelect: string } | null>(null);
   const horizontal = position === 'top' || position === 'bottom';
   const widthEdge = position === 'right' ? 'left' : 'right';
   const heightEdge = position === 'bottom' ? 'top' : 'bottom';
@@ -51,12 +51,12 @@ export function DockSlot({ position, size = {}, onResize, children }: { position
   }
   useLayoutEffect(() => () => restoreCursor(), []);
 
-  function begin(direction: Direction, event: React.PointerEvent<HTMLElement>) {
+  function begin(direction: Direction, event: React.PointerEvent<HTMLElement>, wEdge: 'left'|'right' = widthEdge, hEdge: 'top'|'bottom' = heightEdge) {
     if (event.button !== 0 || !ref.current) return;
     event.preventDefault(); event.stopPropagation();
     const rect = ref.current.getBoundingClientRect(), element = event.currentTarget, body = element.ownerDocument.body;
-    drag.current = { x: event.clientX, y: event.clientY, width: rect.width, height: rect.height, direction, size: { ...size }, next: { ...size }, element, previousCursor: body.style.cursor, previousSelect: body.style.userSelect };
-    body.style.cursor = direction === 'width' ? 'ew-resize' : direction === 'height' ? 'ns-resize' : (widthEdge === 'left') === (heightEdge === 'top') ? 'nwse-resize' : 'nesw-resize';
+    drag.current = { x: event.clientX, y: event.clientY, width: rect.width, height: rect.height, direction, widthEdge:wEdge, heightEdge:hEdge, size: { ...size }, next: { ...size }, element, previousCursor: body.style.cursor, previousSelect: body.style.userSelect };
+    body.style.cursor = direction === 'width' ? 'ew-resize' : direction === 'height' ? 'ns-resize' : (wEdge === 'left') === (hEdge === 'top') ? 'nwse-resize' : 'nesw-resize';
     body.style.userSelect = 'none';
     element.setPointerCapture(event.pointerId);
     setDraft({ ...size });
@@ -64,8 +64,8 @@ export function DockSlot({ position, size = {}, onResize, children }: { position
   function move(event: React.PointerEvent<HTMLElement>) {
     const active = drag.current; if (!active) return;
     const next = { ...active.size };
-    if (active.direction !== 'height') next.width = clampWidth(active.width + (event.clientX - active.x) * (widthEdge === 'left' ? -1 : 1));
-    if (active.direction !== 'width') next.height = clampHeight(active.height + (event.clientY - active.y) * (heightEdge === 'top' ? -1 : 1));
+    if (active.direction !== 'height') next.width = clampWidth(active.width + (event.clientX - active.x) * (active.widthEdge === 'left' ? -1 : 1));
+    if (active.direction !== 'width') next.height = clampHeight(active.height + (event.clientY - active.y) * (active.heightEdge === 'top' ? -1 : 1));
     active.next = next; setDraft(next);
   }
   function finish(event: React.PointerEvent<HTMLElement>) {
@@ -82,22 +82,24 @@ export function DockSlot({ position, size = {}, onResize, children }: { position
     if (direction !== 'width') delete next.height;
     onResize(next);
   }
-  function keyboard(direction: Direction, event: React.KeyboardEvent<HTMLElement>) {
+  function keyboard(direction: Direction, event: React.KeyboardEvent<HTMLElement>, wEdge: 'left'|'right' = widthEdge, hEdge: 'top'|'bottom' = heightEdge) {
     if (event.key === 'Home') { event.preventDefault(); reset(direction); return; }
     const rect = ref.current?.getBoundingClientRect(); if (!rect) return;
     const step = event.shiftKey ? 48 : 16, next = { ...size };
-    if (direction !== 'height' && ['ArrowLeft', 'ArrowRight'].includes(event.key)) next.width = clampWidth(rect.width + (event.key === 'ArrowRight' ? step : -step) * (widthEdge === 'left' ? -1 : 1));
-    else if (direction !== 'width' && ['ArrowUp', 'ArrowDown'].includes(event.key)) next.height = clampHeight(rect.height + (event.key === 'ArrowDown' ? step : -step) * (heightEdge === 'top' ? -1 : 1));
+    if (direction !== 'height' && ['ArrowLeft', 'ArrowRight'].includes(event.key)) next.width = clampWidth(rect.width + (event.key === 'ArrowRight' ? step : -step) * (wEdge === 'left' ? -1 : 1));
+    else if (direction !== 'width' && ['ArrowUp', 'ArrowDown'].includes(event.key)) next.height = clampHeight(rect.height + (event.key === 'ArrowDown' ? step : -step) * (hEdge === 'top' ? -1 : 1));
     else return;
     event.preventDefault(); onResize(next);
   }
-  const events = (direction: Direction) => ({ onPointerDown: (event: React.PointerEvent<HTMLElement>) => begin(direction, event), onPointerMove: move, onPointerUp: finish, onPointerCancel: finish, onLostPointerCapture: finish, onDoubleClick: () => reset(direction), onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => keyboard(direction, event) });
+  const events = (direction: Direction, wEdge: 'left'|'right' = widthEdge, hEdge: 'top'|'bottom' = heightEdge) => ({ onPointerDown: (event: React.PointerEvent<HTMLElement>) => begin(direction, event, wEdge, hEdge), onPointerMove: move, onPointerUp: finish, onPointerCancel: finish, onLostPointerCapture: finish, onDoubleClick: () => reset(direction), onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => keyboard(direction, event, wEdge, hEdge) });
   const width = current.width === undefined ? horizontal ? '100%' : clampWidth(310) : clampWidth(current.width);
   const height = current.height === undefined ? horizontal ? clampHeight(270) : '100%' : clampHeight(current.height);
   return <div ref={ref} className={`dock-slot ${position}${draft ? ' resizing' : ''}`} style={{ width, height }}>
     {children}
-    <div className={`dock-grip grip-height edge-${heightEdge}`} role="separator" tabIndex={0} aria-label={`${label}の高さを調整`} aria-orientation="horizontal" aria-valuemin={minHeight} aria-valuemax={limits.height} aria-valuenow={typeof height === 'number' ? height : limits.height} title="上下にドラッグして高さを調整（ダブルクリックで初期サイズ）" {...events('height')}><DotGrip/></div>
-    <div className={`dock-grip grip-width edge-${widthEdge}`} role="separator" tabIndex={0} aria-label={`${label}の幅を調整`} aria-orientation="vertical" aria-valuemin={minWidth} aria-valuemax={limits.width} aria-valuenow={typeof width === 'number' ? width : limits.width} title="左右にドラッグして幅を調整（ダブルクリックで初期サイズ）" {...events('width')}><DotGrip vertical/></div>
-    <button className={`dock-grip grip-both edge-${heightEdge} edge-${widthEdge}`} aria-label={`${label}の幅と高さを調整`} title="斜めにドラッグして幅と高さを調整（ダブルクリックで初期サイズ）" {...events('both')}><DotGrip vertical/></button>
+    {(['top','bottom'] as const).map(edge=><div key={edge} className={`dock-grip grip-height edge-${edge}`} role="separator" tabIndex={0} aria-label={`${label}の高さを調整（${edge==='top'?'上':'下'}）`} aria-orientation="horizontal" aria-valuemin={minHeight} aria-valuemax={limits.height} aria-valuenow={typeof height==='number'?height:limits.height} title="上下にドラッグして高さを調整" {...events('height',widthEdge,edge)}><DotGrip/></div>)}
+    {(['left','right'] as const).map(edge=><div key={edge} className={`dock-grip grip-width edge-${edge}`} role="separator" tabIndex={0} aria-label={`${label}の幅を調整（${edge==='left'?'左':'右'}）`} aria-orientation="vertical" aria-valuemin={minWidth} aria-valuemax={limits.width} aria-valuenow={typeof width==='number'?width:limits.width} title="左右にドラッグして幅を調整" {...events('width',edge,heightEdge)}><DotGrip vertical/></div>)}
+    {([['top','left','左上'],['bottom','right','右下']] as const).map(([h,w,name])=><button key={name} className={`dock-grip grip-both edge-${h} edge-${w}`} aria-label={`${label}の幅と高さを調整（${name}）`} title="斜めにドラッグして幅と高さを調整" {...events('both',w,h)}><DotGrip vertical/></button>)}
+    <div role="separator" tabIndex={0} aria-label={`${label}とデータの境界`} aria-orientation={horizontal?'horizontal':'vertical'} className={`dock-boundary edge-${horizontal?heightEdge:widthEdge} ${horizontal?'boundary-horizontal':'boundary-vertical'}`} {...events(horizontal?'height':'width')}/>
+
   </div>;
 }

@@ -1,10 +1,11 @@
 import { numeric, type TableData } from './data';
+import type { Palette } from './chart-catalog';
 export type Axis = 'x' | 'y';
 export interface AxisSettings { title: string; min: string; max: string; digits: string; labels?: string[] }
-export interface ChartSettings { x: AxisSettings; y: AxisSettings }
+export interface ChartSettings { x: AxisSettings; y: AxisSettings; palette?:Palette }
 export interface ChartSpec { type: string; table: TableData; settings: ChartSettings }
 export function defaultChartSettings(): ChartSettings {
-  return { x: { title: '', min: '', max: '', digits: 'auto' }, y: { title: '', min: '', max: '', digits: 'auto' } };
+  return { x: { title: '', min: '', max: '', digits: 'auto' }, y: { title: '', min: '', max: '', digits: 'auto' },palette:'fluent' };
 }
 export function validateAxis(settings: AxisSettings, numerical: boolean, labelCount: number): string | null {
   if (numerical) {

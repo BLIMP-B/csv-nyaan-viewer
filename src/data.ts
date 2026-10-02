@@ -2,7 +2,8 @@ import type { ChartSpec } from './chart-settings';
 export interface TableData { headers: string[]; rows: string[][]; total?: number; truncated?: boolean; inferred?: string[] }
 export interface MergeBlock { id: string; name: string; kind?: 'text'|'table'|'chart'; table: TableData; content?: string; image?: string; chart?: ChartSpec }
 export function numeric(value: string): number | null {
-  const text = value.trim(); if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return null;
+  const raw=value.trim().replace(/^[￥¥$€£]\s*/, '').replace(/%$/,'').trim();
+  const text=/^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(raw)?raw.replaceAll(',',''):raw; if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return null;
   const n = Number(text); return Number.isFinite(n) ? n : null;
 }
 export function chartData(table: TableData) {

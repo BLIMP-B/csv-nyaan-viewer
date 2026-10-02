@@ -16,7 +16,7 @@ WindowsではElectronのsafeStorageにより秘密情報をOSの保護機構で�
 
 PKCEとstateを使用し、コールバックは `http://localhost:53682/oauth/callback` で受けます。ポート使用中はログインできません。認証は5分で期限切れになります。
 
-要求する権限は `drive.file`、`spreadsheets`、`gmail.compose`、`chat.messages.create` です。Gmailの権限やChat構成は、組織管理者の許可、OAuthアプリ検証、テストユーザー登録等が必要になる場合があります。Google Chatは利用するChatアプリ設定とユーザーによる認可が必要です。
+要求する権限は `drive.file`、`drive.readonly`、`spreadsheets`、`gmail.compose`、`chat.messages.create` です。Gmailの権限やChat構成は、組織管理者の許可、OAuthアプリ検証、テストユーザー登録等が必要になる場合があります。Google Chatは利用するChatアプリ設定とユーザーによる認可が必要です。
 
 | 共有先 | 直接共有の動作 |
 | --- | --- |
@@ -31,7 +31,7 @@ Chatへのリンク投稿はDriveファイルのアクセス権を変更しま�
 
 1. Microsoft Entraでアプリを登録します。個人アカウントも使用する場合はサポートするアカウント種類を合わせます。
 2. モバイル／デスクトップ用のパブリッククライアントとして、`http://localhost:53682/oauth/callback` を登録します。秘密鍵を配布するWebアプリとして登録しないでください。
-3. 委任アクセス許可 `User.Read`、`Files.ReadWrite`、`Mail.ReadWrite`、`offline_access` を設定します。
+3. 委任アクセス許可 `User.Read`、`Files.ReadWrite`、`Files.Read.All`、`Mail.ReadWrite`、`offline_access` を設定します。
 4. クライアントIDとテナントを入力して保存し、ログインします。既定テナントは `common` です。
 
 | 共有先 | 動作 |
@@ -80,3 +80,7 @@ DiscordのBotトークン、または対象チャンネルで作成したWebhook
 結合ペイン下部の「共有」から、文書内の.md本文とグラフPNGをZIPにまとめて共有できます。Drive、OneDrive、メール下書き、Slack Bot、DiscordはZIPファイルを扱います。Google ChatはZIPのDriveリンクを投稿します。TeamsはOneDriveのZIPを使って共有画面を開きます。
 
 Sheets／Excelオンラインは文書内の表だけを縦結合して共有します。説明文・グラフをセルに変換しません。GitHub Gistは.md本文を共有し、PNG添付は含みません。Slack Webhookは本文の先頭1,400文字までのプレビューです。共有画面に違いを明記しています。
+
+## オンラインファイルの閲覧
+
+Google SheetsはSheets APIの書式付き値を取得し、DriveのExcelはDrive読み取り権限で取得します。Microsoftの共有ExcelはGraphの共有リンク解決とファイル取得を使います。1.0.xで接続済みの場合は追加の読み取り権限のために再ログインしてください。組織の認可・共有権限により開けない場合があります。これらの読み取り要求はAPI契約テストで確認し、実アカウントでの接続は未検証です。

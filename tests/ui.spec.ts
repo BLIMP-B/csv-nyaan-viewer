@@ -35,10 +35,10 @@ test('飛び飛び選択、見出し推定、グラフ自動展開・PNG・選�
   await expect(page.locator('.dock-slot.bottom canvas')).toBeVisible();
   await expect(page.locator('[data-row="1"][data-col="2"]')).toHaveAttribute('aria-selected','false');
   await expect(page.locator('[data-row="1"][data-col="3"]')).toHaveAttribute('aria-selected','true');
-  await expect(page.locator('.dock-pane .pane-note').first()).toContainText('行ラベル');
+  await expect(page.locator('.dock-pane .pane-note').filter({hasText:'見出しを推定'})).toContainText('行ラベル');
   await page.getByLabel('グラフ種類').selectOption('line');
   await app.evaluate(({dialog},target)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:target});},path.join(output,'chart.png'));
-  await page.locator('canvas').click({button:'right'});await page.getByRole('button',{name:'画像として保存（PNG）'}).click();
+  await page.locator('.chart-area').click({button:'right',position:{x:250,y:25}});await page.getByRole('button',{name:'画像として保存（PNG）'}).click();
   await expect.poll(()=>fs.existsSync(path.join(output,'chart.png'))).toBe(true);
   expect(fs.readFileSync(path.join(output,'chart.png')).subarray(0,8).toString('hex')).toBe('89504e470d0a1a0a');
   await app.evaluate(({dialog},target)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:target});},path.join(output,'selected.md'));
@@ -61,13 +61,13 @@ test('下段の軸をホバーで選択し、クリックで編集・出力・�
   expect(fs.readFileSync(path.join(output,'axes.png')).equals(fs.readFileSync(path.join(output,'chart.png')))).toBe(false);
 });
 test('ドット型つまみで幅・高さ・両方を調整し、再表示でも保持',async()=>{
-  const bottom=page.locator('.dock-slot.bottom'), heightGrip=bottom.getByRole('separator',{name:'下ペインの高さを調整',exact:true}), widthGrip=bottom.getByRole('separator',{name:'下ペインの幅を調整',exact:true}), corner=bottom.getByRole('button',{name:'下ペインの幅と高さを調整',exact:true});
+  const bottom=page.locator('.dock-slot.bottom'), heightGrip=bottom.getByRole('separator',{name:'下ペインの高さを調整（上）',exact:true}), widthGrip=bottom.getByRole('separator',{name:'下ペインの幅を調整（右）',exact:true}), corner=bottom.getByRole('button',{name:'下ペインの幅と高さを調整（左上）',exact:true});
   async function dragGrip(grip:ReturnType<Page['locator']>,dx:number,dy:number){const rect=(await grip.boundingBox())!;await page.mouse.move(rect.x+rect.width/2,rect.y+rect.height/2);await page.mouse.down();await page.mouse.move(rect.x+rect.width/2+dx,rect.y+rect.height/2+dy,{steps:10});await page.mouse.up();}
   await expect(heightGrip.locator('circle')).toHaveCount(6);await expect(widthGrip.locator('circle')).toHaveCount(6);
   const initial=(await bottom.boundingBox())!, initialCanvas=(await bottom.locator('canvas').boundingBox())!;
   await dragGrip(heightGrip,0,-60);await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+60,0);
   await dragGrip(widthGrip,-180,0);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(initial.width-180,0);
-  await dragGrip(corner,60,-40);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(initial.width-120,0);await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+100,0);
+  await dragGrip(corner,-60,-40);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(initial.width-120,0);await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+100,0);
   await expect.poll(async()=>(await bottom.locator('canvas').boundingBox())!.height).toBeGreaterThan(initialCanvas.height+90);
   await expect.poll(async()=>(await bottom.locator('canvas').boundingBox())!.width).toBeLessThan(initialCanvas.width-110);
   const resized=(await bottom.boundingBox())!;const persisted=await page.evaluate(()=>window.csv.preferences());expect(persisted.dockSizes?.bottom?.width).toBeCloseTo(resized.width,0);expect(persisted.dockSizes?.bottom?.height).toBeCloseTo(resized.height,0);
