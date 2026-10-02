@@ -19,7 +19,7 @@ permissions:
   contents: read
 concurrency:
   group: windows-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   windows:
     runs-on: windows-latest
@@ -53,6 +53,7 @@ jobs:
       - run: npm test
       - run: npm run test:ui
       - name: Prepare Windows code-signing certificate
+        timeout-minutes: 2
         run: |
           if ($env:CSV_SIGNING_MODE -eq 'self-signed-test') {
             ./scripts/new-test-certificate.ps1
@@ -83,7 +84,8 @@ jobs:
         run: |
           if ($env:CSV_TEST_CERT_THUMBPRINT -match '^[A-Fa-f0-9]{40}$') {
             $my = "Cert:\CurrentUser\My\$env:CSV_TEST_CERT_THUMBPRINT"
-            $root = "Cert:\CurrentUser\Root\$env:CSV_TEST_CERT_THUMBPRINT"
+            $scope = if ($env:CSV_TEST_ROOT_SCOPE -eq 'LocalMachine') { 'LocalMachine' } else { 'CurrentUser' }
+            $root = "Cert:\$scope\Root\$env:CSV_TEST_CERT_THUMBPRINT"
             if (Test-Path $my) { Remove-Item $my -DeleteKey -Force }
             if (Test-Path $root) { Remove-Item $root -Force }
           }
