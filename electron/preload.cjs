@@ -1,6 +1,17 @@
 'use strict';
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 const on = (channel, callback) => { const handler = (_, value) => callback(value); ipcRenderer.on(channel, handler); return () => ipcRenderer.removeListener(channel, handler); };
+// Startup file notifications can arrive before React subscribes.
+const pathListeners = new Set(), pendingPaths = [];
+ipcRenderer.on('csv:paths', (_, paths) => {
+  if (!pathListeners.size) pendingPaths.push(paths);
+  else for (const callback of pathListeners) callback(paths);
+});
+const onPaths = callback => {
+  pathListeners.add(callback);
+  for (const paths of pendingPaths.splice(0)) callback(paths);
+  return () => { pathListeners.delete(callback); };
+};
 contextBridge.exposeInMainWorld('csv', {
   icon:()=>ipcRenderer.invoke('csv:icon'),
   chooseIcon:()=>ipcRenderer.invoke('csv:chooseIcon'),
@@ -30,5 +41,5 @@ contextBridge.exposeInMainWorld('csv', {
   filePath: file => webUtils.getPathForFile(file),
   onCommand: callback => on('csv:command', callback),
   onProgress: callback => on('csv:progress', callback),
-  onPaths: callback => on('csv:paths', callback)
+  onPaths
 });

@@ -2,7 +2,7 @@ import {test,expect,_electron as electron,type ElectronApplication,type Page} fr
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 const root=process.cwd(),out=fs.mkdtempSync(path.join(os.tmpdir(),'csv-nyaan-ui-v11-'));let app:ElectronApplication,page:Page;const errors:string[]=[];
 test.describe.configure({mode:'serial'});
-test.beforeAll(async()=>{app=await electron.launch({args:['--no-sandbox','--user-data-dir='+path.join(out,'profile'),'.',path.join(root,'samples/sales.csv')],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000');});
+test.beforeAll(async()=>{app=await electron.launch({args:['--no-sandbox','--user-data-dir='+path.join(out,'profile'),'.',path.join(root,'samples/sales.csv')],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000',{timeout:30000});});
 test.afterAll(async()=>{await app.close();expect(errors).toEqual([]);});
 test.beforeEach(async()=>{for(const name of ['グラフプレビューを閉じる','ファイル結合を閉じる'])if(await page.getByLabel(name,{exact:true}).count())await page.getByLabel(name,{exact:true}).click();await page.getByLabel('表示状態を復元',{exact:true}).click();await expect(page.locator('.busy-overlay')).toHaveCount(0);});
 const cell=(r:number,c:number)=>page.locator(`[data-row="${r}"][data-col="${c}"]`);

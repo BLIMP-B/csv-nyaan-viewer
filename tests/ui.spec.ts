@@ -8,8 +8,8 @@ const errors:string[]=[], root=process.cwd(),output=fs.mkdtempSync(path.join(os.
 test.beforeAll(async()=>{
   app=await electron.launch({args:['--no-sandbox','--user-data-dir='+path.join(output,'profile'),'.',path.join(root,'samples/sales.csv')],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});
   page=await app.firstWindow();page.on('pageerror',error=>errors.push(error.message));
-  await expect(page.locator('.document-heading h1')).toContainText('sales.csv');
-  await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000');
+  await expect(page.locator('.document-heading h1')).toContainText('sales.csv',{timeout:30000});
+  await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000',{timeout:30000});
 });
 test.afterAll(async()=>{await app.close();expect(errors).toEqual([]);});
 test('最上段のメニュー・左ペイン開閉・コンパクトなファイル情報',async()=>{

@@ -154,7 +154,7 @@ npm run dist:win
 
 ## 検証範囲と上限
 
-コア／共有API契約／Excel・分析・全グラフ描画テスト61件、Electron UIテスト18件。実接続の検証には利用者のOAuth登録・アカウントが必要です。この作業環境ではLinuxでZIPを生成し、テストしています。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
+コア／共有API契約／Excel・分析・全グラフ描画テスト63件、Electron UIテスト18件。実接続の検証には利用者のOAuth登録・アカウントが必要です。この作業環境ではLinuxでZIPを生成し、テストしています。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
 
 100万レコード、約40.9 MiBの日本語CSVで索引生成約0.60秒、末尾10行の取得約1 ms、10万件へのフィルター＋数値ソート約2.27秒を測定しました。これは本環境の参考値です。詳細は [ベンチマーク結果](docs/benchmark.json) を参照してください。
 
