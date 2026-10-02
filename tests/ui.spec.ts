@@ -32,9 +32,9 @@ test('最上段のメニュー・左ペイン開閉・コンパクトなファ�
   await page.getByLabel('左ペインを開閉').click();await expect(page.locator('.sidebar')).toBeVisible();await page.getByLabel('左ペインを開閉').click();await expect(page.locator('.sidebar')).toHaveCount(0);
   expect((await page.locator('.document-heading').boundingBox())!.height).toBeLessThanOrEqual(40);
   await page.locator('.menubar').getByRole('button',{name:'ヘルプ',exact:true}).click();await page.getByRole('button',{name:'このアプリについて',exact:true}).click();
-  const about=page.getByRole('dialog');await expect(about).toContainText('BLINP_B(furoneko+)');await expect(about.getByRole('link',{name:/GitHub/})).toHaveAttribute('href','https://github.com/yosu-yosu');await expect(about.getByRole('link',{name:/ウェブサイト/})).toHaveAttribute('href','https://yosuyosu.co.jp/');
+  const about=page.getByRole('dialog');await expect(about).toContainText('BLINP_B(furoneko+)');await expect(about.getByRole('link',{name:/GitHub/})).toHaveAttribute('href','https://github.com/yosu-yosu');await expect(about.getByRole('link',{name:/ウェブサイト/})).toHaveCount(0);await expect(about.getByRole('link')).toHaveCount(1);
   await app.evaluate(({shell})=>{(globalThis as any).aboutUrls=[];shell.openExternal=async url=>{(globalThis as any).aboutUrls.push(url);};});
-  await about.getByRole('link',{name:/GitHub/}).click();await about.getByRole('link',{name:/ウェブサイト/}).click();await expect.poll(()=>app.evaluate(()=>(globalThis as any).aboutUrls)).toEqual(['https://github.com/yosu-yosu','https://yosuyosu.co.jp/']);
+  await about.getByRole('link',{name:/GitHub/}).click();await expect.poll(()=>app.evaluate(()=>(globalThis as any).aboutUrls)).toEqual(['https://github.com/yosu-yosu']);
   await page.getByLabel('ダイアログを閉じる').click();
 });
 test('検索・フィルター・自然順ソート・非破壊読み込み',async()=>{

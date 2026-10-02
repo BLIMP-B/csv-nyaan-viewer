@@ -6,7 +6,7 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.3.0-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.3.1-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
@@ -126,7 +126,7 @@ XLSX / XLS / XLSM / XLSB / XLTX / XLTM / XLT / XLAM / XLA、およびODS / FODS 
 
 ## オブザーバーとコード署名
 
-オブザーバーは **BLINP_B(furoneko+)** です。「ヘルプ → このアプリについて」に [GitHub](https://github.com/yosu-yosu) と [ウェブサイト](https://yosuyosu.co.jp/) を掲載しています。
+オブザーバーは **BLINP_B(furoneko+)** です。「ヘルプ → このアプリについて」に [GitHub](https://github.com/yosu-yosu) を掲載しています。
 
 検証用の自己署名証明書でWindows実行ファイルへ署名し、配布前にAuthenticodeを検証します。秘密鍵は配布せず、公開証明書だけを同梱します。手順と現在の署名状態は [Windowsコード署名](docs/code-signing.md) を参照してください。Releasesの `SIGNATURE.json` に配布実行ファイルの検証結果を記録します。
 
@@ -187,7 +187,7 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.3.0-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.3.1-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 

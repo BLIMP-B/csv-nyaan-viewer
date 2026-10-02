@@ -112,7 +112,7 @@ ipcMain.handle('csv:logout',(_,provider)=>sharing.logout(provider));
 ipcMain.handle('csv:share',(_,options)=>sharing.share(options));
 ipcMain.handle('csv:shareBrowser',(_,options)=>sharing.browser(options));
 
-ipcMain.handle('csv:openExternal',(_,url)=>{const u=new URL(url);if(u.protocol!=='https:'||!['google.com','googleusercontent.com','microsoft.com','live.com','office.com','github.com','slack.com','discord.com','yosuyosu.co.jp'].some(domain=>u.hostname===domain||u.hostname.endsWith('.'+domain)))throw new Error('未対応のURLです。');return shell.openExternal(url);});
+ipcMain.handle('csv:openExternal',(_,url)=>{const u=new URL(url);if(u.protocol!=='https:'||!['google.com','googleusercontent.com','microsoft.com','live.com','office.com','github.com','slack.com','discord.com'].some(domain=>u.hostname===domain||u.hostname.endsWith('.'+domain)))throw new Error('未対応のURLです。');return shell.openExternal(url);});
 
 ipcMain.handle('csv:saveDocument',async(_,blocks)=>{
   const {documentText}=require('./tables.cjs');
