@@ -46,8 +46,8 @@ test('ライト・ダークの全アクセントでメニュー・設定・共�
     await page.locator('.menubar').getByRole('button',{name:'共有',exact:true}).click();await expect(page.getByLabel('共有先')).toBeVisible();await readableText(page);
     await page.getByRole('button',{name:'接続設定',exact:true}).click();await expect(page.getByLabel('OAuthクライアントID')).toBeVisible();await readableText(page);await page.getByLabel('共有画面を閉じる').click();
     await page.getByLabel('グラフ種類').selectOption('column');
-    const host=page.locator('.chart-area .echart-host'),rect=(await host.boundingBox())!;
-    await host.hover({position:{x:70+(rect.width-95)/12,y:rect.height-70}});
+    const chart=page.locator('.chart-area'),xAxis=(await chart.getByRole('button',{name:'X軸を編集',exact:true}).boundingBox())!,yAxis=(await chart.getByRole('button',{name:'Y軸を編集',exact:true}).boundingBox())!;
+    await page.mouse.move(xAxis.x+xAxis.width/12,yAxis.y+yAxis.height*.97);
     await expect(page.locator('.chart-tooltip')).toBeVisible();await expect(page.locator('.chart-tooltip')).toHaveCSS('opacity','1');await readableText(page);
     await page.getByLabel('設定',{exact:true}).hover();
     const popupPromise=app.waitForEvent('window');await page.getByLabel('グラフプレビューを別ウィンドウにする').click();const popup=await popupPromise;await expect(popup.locator('canvas')).toBeVisible();await readableText(popup);await popup.getByLabel('メインウィンドウに戻す').click();

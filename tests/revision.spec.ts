@@ -1,4 +1,5 @@
 import {test,expect,_electron as electron,type ElectronApplication,type Page} from '@playwright/test';
+import {readableText} from './ui-contrast';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 const root=process.cwd(),out=fs.mkdtempSync(path.join(os.tmpdir(),'csv-nyaan-ui-v11-'));let app:ElectronApplication,page:Page;const errors:string[]=[];
 test.describe.configure({mode:'serial'});
@@ -31,7 +32,54 @@ test('列記号だけの最上段と元の見出し行を分離し、固定・�
 test('セルのCtrl/Shift/矢印と行列ショートカット',async()=>{await cell(0,1).click();await page.locator('.grid-scroll').press('Shift+ArrowDown');await page.locator('.grid-scroll').press('Shift+ArrowRight');await expect(cell(1,2)).toHaveAttribute('aria-selected','true');await expect(cell(0,1)).toHaveAttribute('aria-selected','true');await page.locator('.grid-scroll').press('Control+ArrowDown');await expect(page.locator('.inspector .cell-address')).toHaveText('C6');await page.locator('.grid-scroll').press('Control+Home');await expect(page.locator('.cell-address')).toHaveText('A1');await page.locator('.grid-scroll').press('Control+Space');await expect(cell(5,0)).toHaveAttribute('aria-selected','true');await page.locator('.grid-scroll').press('Shift+Space');await expect(cell(0,4)).toHaveAttribute('aria-selected','true');await cell(3,3).click({modifiers:['Control']});await expect(cell(0,0)).toHaveAttribute('aria-selected','true');await expect(cell(3,3)).toHaveAttribute('aria-selected','true');});
 test('列のホバー選択、左右のアイコン、ドラッグ複数列のメニュー、表示削除と復元',async()=>{const b=page.getByLabel('列Bを選択',{exact:true}),d=page.getByLabel('列Dを選択',{exact:true});await b.hover();await expect(b).toHaveCSS('background-color','rgb(232, 242, 251)');await b.click();await expect(cell(5,1)).toHaveAttribute('aria-selected','true');await page.locator('.column-head[data-head-index="1"] .header-eye-zone').hover();await page.getByLabel('列Bを非表示',{exact:true}).click();await expect(cell(0,1)).toHaveClass(/cell-concealed/);await expect(cell(0,1).locator('span')).toBeVisible();await expect(cell(0,1).locator('span')).toHaveText('1200000');await page.getByLabel('列Bを表示',{exact:true}).click();await expect(cell(0,1)).not.toHaveClass(/cell-concealed/);await page.locator('.column-head[data-head-index="1"] .header-sort-zone').hover();await page.getByLabel('列Bを降順',{exact:true}).click();await expect(cell(0,1)).toHaveText('1980000');await page.locator('.column-head[data-head-index="1"] .header-sort-zone').hover();await page.getByLabel('列Bを元の順序へ',{exact:true}).click();await expect(cell(0,1)).toHaveText('1200000');await drag(b,d);const menu=page.getByRole('menu',{name:'行列の操作'});await expect(menu).toBeVisible();await expect(menu.getByRole('menuitem')).toHaveCount(2);await expect(cell(4,2)).toHaveAttribute('aria-selected','true');await menu.getByRole('menuitem',{name:'削除',exact:true}).click();await expect(cell(0,1)).toHaveCount(0);await page.getByLabel('表示状態を復元').click();await expect(cell(0,1)).toHaveText('1200000');await b.click({button:'right'});await expect(menu.getByRole('menuitem')).toHaveCount(3);await page.locator('.head-menu-shield').click({position:{x:900,y:700}});});
 test('行も複数ドラッグ・グレーアウト・削除・横方向ソート',async()=>{const r0=page.locator('.row-head[data-head-index="0"] .header-center'),r2=page.locator('.row-head[data-head-index="2"] .header-center');await drag(r0,r2);const menu=page.getByRole('menu',{name:'行列の操作'});await expect(menu.getByRole('menuitem')).toHaveCount(2);await menu.getByRole('menuitem',{name:'表示 / 非表示'}).click();await expect(cell(0,4)).toHaveClass(/cell-concealed/);await expect(cell(2,0)).toHaveClass(/cell-concealed/);await expect(cell(0,4).locator('span')).toBeVisible();await expect(cell(2,0).locator('span')).toBeVisible();await expect(cell(0,4).locator('span')).toHaveText('000001');await expect(cell(2,0).locator('span')).toHaveText('3月');await page.getByLabel('表示状態を復元').click();await r0.click({button:'right'});await expect(menu.getByRole('menuitem')).toHaveCount(3);await menu.getByRole('menuitem',{name:'ソート / フィルター'}).click();await menu.getByRole('button',{name:'昇順',exact:true}).click();await expect(page.locator('.column-head').first()).not.toHaveAttribute('data-head-index','0');await page.getByLabel('表示状態を復元').click();await drag(r0,r2);await menu.getByRole('menuitem',{name:'削除',exact:true}).click();await expect(page.locator('.statusbar')).toContainText('3レコード');await page.getByLabel('表示状態を復元').click();await expect(page.locator('.statusbar')).toContainText('6レコード');});
-test('閉じたエリアの再表示と、境界全体のドラッグ、6箇所のつまみ',async()=>{await page.getByLabel('下段プレビューを開く').click();const bottom=page.locator('.dock-slot.bottom');await expect(bottom.locator('.dock-grip')).toHaveCount(6);const initial=(await bottom.boundingBox())!;const boundary=bottom.getByRole('separator',{name:'下ペインとデータの境界'}),b=(await boundary.boundingBox())!;await page.mouse.move(b.x+80,b.y+3);await page.mouse.down();await page.mouse.move(b.x+80,b.y-47,{steps:8});await page.mouse.up();await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+50,0);await page.getByLabel('右側ファイル結合を開く').click();const right=page.locator('.dock-slot.right'),r=(await right.boundingBox())!,edge=(await right.getByRole('separator',{name:'右ペインとデータの境界'}).boundingBox())!;await page.mouse.move(edge.x+3,edge.y+75);await page.mouse.down();await page.mouse.move(edge.x-37,edge.y+75,{steps:8});await page.mouse.up();await expect.poll(async()=>(await right.boundingBox())!.width).toBeCloseTo(r.width+40,0);await page.getByLabel('左サイドを開く').click();const sidebar=page.locator('.sidebar'),s=(await sidebar.boundingBox())!,se=(await page.getByRole('separator',{name:'左サイドとデータの境界'}).boundingBox())!;await page.mouse.move(se.x+3,se.y+75);await page.mouse.down();await page.mouse.move(se.x+43,se.y+75,{steps:8});await page.mouse.up();await expect.poll(async()=>(await sidebar.boundingBox())!.width).toBeCloseTo(s.width+40,0);await page.getByLabel('左ペインを開閉').click();});
+test('境界ボタンの開閉・位置変更・共存と、境界ドラッグ、6箇所のつまみ',async()=>{
+  await page.getByLabel('下段プレビューを開く').click();const bottom=page.locator('.dock-slot.bottom');
+  await expect(bottom.locator('.dock-grip')).toHaveCount(6);const initial=(await bottom.boundingBox())!;
+  const boundary=bottom.getByRole('separator',{name:'下ペインとデータの境界'}),b=(await boundary.boundingBox())!;
+  await page.mouse.move(b.x+80,b.y+3);await page.mouse.down();await page.mouse.move(b.x+80,b.y-47,{steps:8});await page.mouse.up();
+  await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+50,0);
+  await page.getByLabel('右側ファイル結合を開く').click();const right=page.locator('.dock-slot.right'),r=(await right.boundingBox())!;
+  const edge=(await right.getByRole('separator',{name:'右ペインとデータの境界'}).boundingBox())!;
+  await page.mouse.move(edge.x+3,edge.y+75);await page.mouse.down();await page.mouse.move(edge.x-37,edge.y+75,{steps:8});await page.mouse.up();
+  await expect.poll(async()=>(await right.boundingBox())!.width).toBeCloseTo(r.width+40,0);
+  await page.getByLabel('左サイドを開く').click();const sidebar=page.locator('.sidebar'),s=(await sidebar.boundingBox())!;
+  const se=(await page.getByRole('separator',{name:'左サイドとデータの境界'}).boundingBox())!;
+  await page.mouse.move(se.x+3,se.y+75);await page.mouse.down();await page.mouse.move(se.x+43,se.y+75,{steps:8});await page.mouse.up();
+  await expect.poll(async()=>(await sidebar.boundingBox())!.width).toBeCloseTo(s.width+40,0);
+  async function touches(panel:ReturnType<Page['locator']>,name:string,side:'top'|'bottom'|'left'|'right'){
+    const button=panel.getByRole('button',{name,exact:true});await expect(button).toBeVisible();await expect(button).toHaveAttribute('aria-expanded','true');
+    const a=(await panel.boundingBox())!,c=(await button.boundingBox())!;
+    expect(c.x).toBeGreaterThanOrEqual(a.x-1);expect(c.y).toBeGreaterThanOrEqual(a.y-1);
+    expect(c.x+c.width).toBeLessThanOrEqual(a.x+a.width+1);expect(c.y+c.height).toBeLessThanOrEqual(a.y+a.height+1);
+    const gap=side==='top'?c.y-a.y:side==='bottom'?a.y+a.height-c.y-c.height:side==='left'?c.x-a.x:a.x+a.width-c.x-c.width;
+    expect(Math.abs(gap)).toBeLessThanOrEqual(1);
+    for(const grip of await panel.locator('.dock-grip').all()){
+      const g=(await grip.boundingBox())!;const overlapX=Math.min(c.x+c.width,g.x+g.width)-Math.max(c.x,g.x),overlapY=Math.min(c.y+c.height,g.y+g.height)-Math.max(c.y,g.y);
+      expect(overlapX<=0||overlapY<=0).toBe(true);
+    }
+    return button;
+  }
+  const leftClose='左サイドの境界ボタンで閉じる',rightClose='ファイル結合の境界ボタンで閉じる',previewClose='グラフプレビューの境界ボタンで閉じる';
+  await touches(sidebar,leftClose,'right');await touches(right,rightClose,'left');await touches(bottom,previewClose,'top');
+  await expect(page.getByLabel('ファイル結合を閉じる',{exact:true})).toBeVisible();await expect(page.getByLabel('グラフプレビューを閉じる',{exact:true})).toBeVisible();
+  await readableText(page);await page.screenshot({path:'docs/images/pane-boundary-buttons-light.png'});
+  await page.getByLabel('テーマを切り替え').click();await readableText(page);await page.screenshot({path:'docs/images/pane-boundary-buttons-dark.png'});await page.getByLabel('テーマを切り替え').click();
+  const dimensions=[(await sidebar.boundingBox())!.width,(await right.boundingBox())!.width,(await bottom.boundingBox())!.height];
+  await page.getByLabel(leftClose,{exact:true}).click();await expect(sidebar).toHaveCount(0);await page.getByLabel('左サイドを開く').click();await expect.poll(async()=>(await sidebar.boundingBox())!.width).toBeCloseTo(dimensions[0],0);
+  await page.getByLabel(rightClose,{exact:true}).click();await expect(right).toHaveCount(0);await page.getByLabel('右側ファイル結合を開く').click();await expect.poll(async()=>(await right.boundingBox())!.width).toBeCloseTo(dimensions[1],0);
+  await page.getByLabel(previewClose,{exact:true}).click();await expect(bottom).toHaveCount(0);await page.getByLabel('下段プレビューを開く').click();await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(dimensions[2],0);
+  for(const [position,side] of [['top','bottom'],['left','right'],['right','left'],['bottom','top']] as const){
+    await page.getByLabel('グラフプレビューの位置').selectOption(position);const dock=page.locator('.dock-slot.'+position);
+    await touches(dock,previewClose,side);
+    if(position==='right'){
+      const a=(await dock.getByLabel(previewClose,{exact:true}).boundingBox())!,c=(await dock.getByLabel(rightClose,{exact:true}).boundingBox())!;
+      expect(a.y+a.height).toBeLessThanOrEqual(c.y);
+    }
+    await dock.getByLabel(previewClose,{exact:true}).click();await expect(page.getByLabel('グラフプレビューの位置')).toHaveCount(0);
+    await expect(page.getByLabel('ファイル結合の位置')).toBeVisible();await page.getByLabel('下段プレビューを開く').click();await touches(page.locator('.dock-slot.'+position),previewClose,side);
+  }
+  await page.getByLabel(leftClose,{exact:true}).click();
+});
 test('グラフの全種を描画、パレット変更、自動推薦とPNG保存',async()=>{await cell(0,1).click();await cell(5,3).click({modifiers:['Shift']});await expect(page.locator('.dock-slot.bottom canvas')).toBeVisible();await page.getByLabel('グラフ種類').selectOption('column');const first=await page.locator('.chart-area canvas').evaluate((el:HTMLCanvasElement)=>el.toDataURL());await page.getByLabel('グラフのカラーセット').selectOption('pastel');await expect.poll(()=>page.locator('.chart-area canvas').evaluate((el:HTMLCanvasElement)=>el.toDataURL())).not.toBe(first);const options=await page.getByLabel('グラフ種類').locator('option').evaluateAll(nodes=>nodes.map(n=>(n as HTMLOptionElement).value));expect(options.length).toBeGreaterThanOrEqual(75);for(const kind of options){await page.getByLabel('グラフ種類').selectOption(kind);await expect(page.locator('.chart-area canvas')).toBeVisible();}await page.locator('.pane-toolbar').getByRole('button',{name:'自動',exact:true}).click();await expect(page.getByLabel('グラフ種類')).toHaveValue('line');await app.evaluate(({dialog},target)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:target});},path.join(out,'all-charts.png'));await page.getByRole('button',{name:'PNG保存',exact:true}).click();await expect.poll(()=>fs.existsSync(path.join(out,'all-charts.png'))).toBe(true);await page.screenshot({path:'docs/images/expanded-charts.png'});});
 test('左サイドのタブ切り替え・幅変更と変量・多変量分析',async()=>{
   await cell(0,1).click();await cell(5,3).click({modifiers:['Shift']});
