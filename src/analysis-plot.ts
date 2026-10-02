@@ -1,4 +1,4 @@
-import {plotLayout,type TextMeasure} from './plot-layout';
+import {plotLayout,wrapText,type TextMeasure} from './plot-layout';
 import type {ImageTheme} from './export-theme';
 import type {PairSummary,PrincipalComponents,VariableSummary} from './analysis-types';
 export interface Point3 {x:number;y:number;z:number;row:number;cluster:number;series:number}
@@ -51,5 +51,58 @@ export function drawPlot(canvas:HTMLCanvasElement,model:PlotModel,orientation:Or
 }
 export function plotPNG(model:PlotModel,orientation:Orientation={yaw:0,pitch:0,roll:0},angle=0,theme:ImageTheme='light'){const canvas=plotCanvas(model,1.5);drawPlot(canvas,model,orientation,angle,plotColors(theme));return canvas.toDataURL('image/png');}
 export function plotFilename(model:PlotModel){return 'analysis_'+model.labels.slice(0,model.dimension).map((label,i)=>'XYZ'[i]+'-'+label.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(0,48)).join('_');}
-export function objText(model:PlotModel){const text=['# CSV nyaan Viewer',...model.labels.slice(0,3).map((label,i)=>'# '+'XYZ'[i]+': '+label.replace(/[\r\n]/g,' '))];for(const p of model.points)text.push(`v ${p.x} ${p.y} ${p.z}`);for(let series=0;series<model.seriesNames.length;series++){text.push('o series_'+(series+1));const ids=model.points.flatMap((p,i)=>p.series===series?[i+1]:[]);for(const id of ids)text.push('p '+id);if(ids.length>1)text.push('l '+ids.join(' '));}return text.join('\n')+'\n';}
+export interface ObjLabelMask {width:number;height:number;runs:[x:number,y:number,width:number][]}
+export type ObjLabelRasterizer=(text:string)=>ObjLabelMask;
+function objLabelMask(text:string):ObjLabelMask {
+  const canvas=document.createElement('canvas'),context=canvas.getContext('2d');if(!context)throw Error('OBJの軸名を描画できません。');
+  const size=24,lineHeight=30,padding=3;context.font='600 '+font(size);
+  const lines=wrapText(text,378,size,value=>context.measureText(value).width,12);
+  canvas.width=Math.max(1,Math.ceil(Math.max(...lines.map(value=>context.measureText(value).width))+padding*2));canvas.height=Math.max(1,lines.length*lineHeight+padding*2);
+  context.font='600 '+font(size);context.fillStyle='#fff';context.textBaseline='top';lines.forEach((line,i)=>context.fillText(line,padding,padding+i*lineHeight));
+  const pixels=context.getImageData(0,0,canvas.width,canvas.height).data,runs:ObjLabelMask['runs']=[];
+  for(let y=0;y<canvas.height;y++){let start=-1;for(let x=0;x<=canvas.width;x++){const ink=x<canvas.width&&pixels[(y*canvas.width+x)*4+3]>=96;if(ink&&start<0)start=x;if(!ink&&start>=0){runs.push([start,y,x-start]);start=-1;}}}
+  return {width:canvas.width,height:canvas.height,runs};
+}
+// OBJ has no font or point-size primitive: export visible solid geometry in the
+// original data coordinates, with text rendered into the same standalone file.
+export function objText(model:PlotModel,rasterize:ObjLabelRasterizer=objLabelMask){
+  const axisNames=model.labels.slice(0,model.dimension).map((label,i)=>'XYZ'[i]+': '+label.replace(/[\r\n]/g,' '));
+  const text=['# CSV nyaan Viewer',...axisNames.map(label=>'# '+label)],extent=Math.max(1,...model.points.flatMap(p=>[Math.abs(p.x),Math.abs(p.y),Math.abs(p.z)]));
+  if(!Number.isFinite(extent)||model.points.some(p=>![p.x,p.y,p.z].every(Number.isFinite)))throw Error('OBJの座標が不正です。');
+  const radius=extent*.025;let vertices=0;
+  const vertex=(x:number,y:number,z:number)=>{text.push(`v ${x} ${y} ${z}`);return ++vertices;};
+  const face=(...ids:number[])=>{for(let i=1;i<ids.length-1;i++)text.push(`f ${ids[0]} ${ids[i]} ${ids[i+1]}`);};
+  const centers=model.points.map(p=>vertex(p.x,p.y,p.z));text.push('# Point radius: '+radius,'s off');
+  function sphere(p:Point3,index:number){
+    text.push('g point_'+(index+1),'# Source row: '+p.row+'; cluster: '+p.cluster);const segments=12,rings=8;
+    const top=vertex(p.x,p.y+radius,p.z),rows:number[][]=[];
+    for(let ring=1;ring<rings;ring++){const theta=Math.PI*ring/rings;rows.push(Array.from({length:segments},(_,j)=>{const phi=2*Math.PI*j/segments;return vertex(p.x+radius*Math.sin(theta)*Math.cos(phi),p.y+radius*Math.cos(theta),p.z+radius*Math.sin(theta)*Math.sin(phi));}));}
+    const bottom=vertex(p.x,p.y-radius,p.z);
+    for(let j=0;j<segments;j++){const next=(j+1)%segments;face(top,rows[0][next],rows[0][j]);for(let r=0;r<rows.length-1;r++)face(rows[r][j],rows[r][next],rows[r+1][next],rows[r+1][j]);face(bottom,rows.at(-1)![j],rows.at(-1)![next]);}
+  }
+  for(let series=0;series<model.seriesNames.length;series++){
+    text.push('o series_'+(series+1));const ids:number[]=[];
+    model.points.forEach((p,i)=>{if(p.series===series){ids.push(centers[i]);sphere(p,i);}});
+    if(model.lines&&ids.length>1){text.push('g series_'+(series+1)+'_connections','l '+ids.join(' '));}
+  }
+  function axialVertex(axis:number,distance:number,r:number,angle:number){const coords=[0,0,0];coords[axis]=distance;coords[(axis+1)%3]=Math.cos(angle)*r;coords[(axis+2)%3]=Math.sin(angle)*r;return vertex(coords[0],coords[1],coords[2]);}
+  for(let axis=0;axis<model.dimension;axis++){
+    const values=model.points.map(p=>p[['x','y','z'][axis] as 'x'|'y'|'z']),min=Math.min(0,...values),start=min<0?min-extent*.1:0,end=extent*1.35,base=end-extent*.12,segments=12;
+    text.push('o axis_'+'XYZ'[axis],'g axis_'+'XYZ'[axis],'# '+axisNames[axis]);
+    const a=Array.from({length:segments},(_,j)=>axialVertex(axis,start,extent*.006,j*2*Math.PI/segments)),b=Array.from({length:segments},(_,j)=>axialVertex(axis,base,extent*.006,j*2*Math.PI/segments)),ca=axialVertex(axis,start,0,0),cb=axialVertex(axis,base,0,0);
+    for(let j=0;j<segments;j++){const next=(j+1)%segments;face(a[j],a[next],b[next],b[j]);face(ca,a[next],a[j]);face(cb,b[j],b[next]);}
+    const arrow=Array.from({length:segments},(_,j)=>axialVertex(axis,base,extent*.032,j*2*Math.PI/segments)),tip=axialVertex(axis,end,0,0),center=axialVertex(axis,base,0,0);
+    for(let j=0;j<segments;j++){const next=(j+1)%segments;face(arrow[j],arrow[next],tip);face(center,arrow[next],arrow[j]);}
+    const mask=rasterize(axisNames[axis]);if(!mask.width||!mask.height||!mask.runs.length)throw Error('OBJの軸名を描画できません。');
+    const pixel=Math.min(extent*.006,extent*1.35/mask.width),depth=extent*.008,w=mask.width*pixel;
+    const origin=axis===0?[end+extent*.08,extent*.08,0]:axis===1?[-w/2,end+extent*.08,0]:[-w/2,extent*.08,end+extent*.08];
+    text.push('o axis_label_'+'XYZ'[axis],'g axis_label_'+'XYZ'[axis],'# '+axisNames[axis]);
+    for(const [x,y,width] of mask.runs){
+      const left=origin[0]+x*pixel,right=left+width*pixel,bottom=origin[1]+(mask.height-y-1)*pixel,top=bottom+pixel,z=origin[2];
+      const a=vertex(left,bottom,z),b=vertex(right,bottom,z),c=vertex(right,top,z),d=vertex(left,top,z),e=vertex(left,bottom,z+depth),f=vertex(right,bottom,z+depth),g=vertex(right,top,z+depth),h=vertex(left,top,z+depth);
+      face(a,d,c,b);face(e,f,g,h);face(a,b,f,e);face(b,c,g,f);face(c,d,h,g);face(d,a,e,h);
+    }
+  }
+  return text.join('\n')+'\n';
+}
 export function seriesCorrelations(model:PlotModel){if(model.seriesNames.length<2)return [];const first=model.points.filter(p=>p.series===0),second=model.points.filter(p=>p.series===1);return ['x','y','z'].slice(0,model.dimension).map(key=>{const a=first.map(p=>p[key as 'x'|'y'|'z']),b=second.map(p=>p[key as 'x'|'y'|'z']);const ma=a.reduce((s,v)=>s+v,0)/a.length,mb=b.reduce((s,v)=>s+v,0)/b.length,cross=a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0),den=Math.sqrt(a.reduce((s,v)=>s+(v-ma)**2,0)*b.reduce((s,v)=>s+(v-mb)**2,0));return {axis:key.toUpperCase(),r:den?cross/den:null};});}
