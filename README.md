@@ -6,7 +6,7 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.2.1-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.2.2-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
@@ -179,7 +179,7 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.2.1-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.2.2-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 
