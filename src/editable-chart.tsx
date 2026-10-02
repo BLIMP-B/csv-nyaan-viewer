@@ -1,3 +1,5 @@
+import {useImageExportTheme} from './export-theme';
+import {chartPNG} from './chart-export';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as echarts from 'echarts';
 import { buildChartOption } from './chart-options';
@@ -16,13 +18,15 @@ export function EditableChart({ table, type, settings, onSettingsChange, theme, 
   imageCallback.current = onImage;
   const [boxes,setBoxes] = useState<AxisBox[]>([]), [hovered,setHovered] = useState<Axis | null>(null);
   const [editing,setEditing] = useState<{ axis: Axis; left: number; top: number } | null>(null), [draft,setDraft] = useState<AxisSettings | null>(null), [labels,setLabels] = useState(''), [error,setError] = useState('');
-  const model = useMemo(() => chartData(table), [table]);
+  const model = useMemo(() => chartData(table), [table]), exportTheme=useImageExportTheme();
+  const capture=useMemo(()=>{let image:string|null=null;return()=>model.series.length?(image??=chartPNG(table,type,settings,exportTheme)):null;},[model,table,type,settings,exportTheme]);
+  useEffect(()=>{if(onImage){const image=capture();if(image)imageCallback.current?.(image);}},[capture,!!onImage]);
   const kind=chartKind(type), hasAxes=!['pie','pie-exploded','pie-3d','pie-exploded-3d','pie-of-pie','bar-of-pie','doughnut','doughnut-exploded','radar','radar-markers','radar-filled','treemap','sunburst','funnel','map','surface-3d','surface-wireframe'].includes(type);
   const numerical=(axis:Axis)=>axis==='x'?kind.horizontal||['散布図','バブル'].includes(kind.family):!kind.horizontal;
   const categoryAxis:Axis=kind.horizontal?'y':'x';
   const hasLabels=(axis:Axis)=>!['散布図','バブル','等高線'].includes(kind.family)&&!(axis===categoryAxis&&['histogram','boxplot'].includes(type));
   const labelCount=(axis:Axis)=>axis===categoryAxis?model.labels.length:model.series.length;
-  if (handleRef) handleRef.current = { png: () => chart.current&&chart.current.getWidth()>0&&chart.current.getHeight()>0?chart.current.getDataURL({type:'png',pixelRatio:1}):null };
+  if (handleRef) handleRef.current = {png:capture};
   useEffect(() => {
     if(!host.current||!model.series.length){setBoxes([]);return;}
     const instance=echarts.init(host.current,undefined,{renderer:'canvas'});chart.current=instance;
@@ -34,7 +38,6 @@ export function EditableChart({ table, type, settings, onSettingsChange, theme, 
         {axis:'y',left:0,top:rect.y,width:Math.max(30,rect.x),height:rect.height}
       ]:[];
       setBoxes(old=>JSON.stringify(old)===JSON.stringify(next)?old:next);
-      imageCallback.current?.(instance.getDataURL({type:'png',pixelRatio:1}));
     };
     instance.on('finished',report);instance.setOption(buildChartOption(table,type,settings,theme,compact),true);report();
     const observer=new ResizeObserver(()=>{if(host.current&&host.current.clientWidth>0&&host.current.clientHeight>0){instance.resize();report();}});observer.observe(host.current);

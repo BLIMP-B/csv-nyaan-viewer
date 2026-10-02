@@ -1,3 +1,5 @@
+import {plotLayout,type TextMeasure} from './plot-layout';
+import type {ImageTheme} from './export-theme';
 import type {PairSummary,PrincipalComponents,VariableSummary} from './analysis-types';
 export interface Point3 {x:number;y:number;z:number;row:number;cluster:number;series:number}
 export interface PlotModel {title:string;labels:[string,string,string];axisCaptions?:[string,string,string];points:Point3[];dimension:2|3;uniform?:boolean;lines:boolean;seriesNames:string[];regression?:{slope:number;intercept:number}}
@@ -28,17 +30,26 @@ export function geometry(model:PlotModel,orientation:Orientation={yaw:0,pitch:0,
   return {points,axes,bounds,regression};
 }
 export interface PlotColors {bg:string;text:string;muted:string;series:string[]}
-export function plotColors():PlotColors {const style=getComputedStyle(document.documentElement);return {bg:style.getPropertyValue('--bg').trim(),text:style.getPropertyValue('--text').trim(),muted:style.getPropertyValue('--muted').trim(),series:[1,2,3,4].map(n=>style.getPropertyValue('--plot-'+n).trim())};}
-const short=(s:string,max=28)=>s.length>max?s.slice(0,max-1)+'…':s;
+export function plotColors(theme:ImageTheme='light'):PlotColors {return theme==='dark'?{bg:'#292929',text:'#f0f0f0',muted:'#b3b3b3',series:['#479ef5','#54b054','#f7630c','#a6a7ff']}:{bg:'#ffffff',text:'#242424',muted:'#616161',series:['#0f6cbd','#107c41','#d83b01','#5b5fc7']};}
+const font=(size:number)=>`${size}px "Segoe UI","Yu Gothic UI",sans-serif`;
+function canvasMeasure(context:CanvasRenderingContext2D):TextMeasure{return (text,size)=>{context.font=font(size);return context.measureText(text).width;};}
+export function plotCanvas(model:PlotModel,pixelRatio=1){const canvas=document.createElement('canvas'),context=canvas.getContext('2d')!;const layout=plotLayout(model,geometry(model),canvasMeasure(context));canvas.width=Math.round(layout.width*pixelRatio);canvas.height=Math.round(layout.height*pixelRatio);return canvas;}
 export function drawPlot(canvas:HTMLCanvasElement,model:PlotModel,orientation:Orientation,angle:number,colors=plotColors()){
-  const context=canvas.getContext('2d')!,g=geometry(model,orientation,angle);context.save();context.fillStyle=colors.bg;context.fillRect(0,0,canvas.width,canvas.height);context.scale(canvas.width/480,canvas.height/340);context.fillStyle=colors.text;context.font='15px "Segoe UI","Yu Gothic UI",sans-serif';context.fillText(short(model.title,42),12,22);context.strokeStyle=colors.muted;context.lineWidth=1.2;
-  for(const axis of g.axes){context.beginPath();context.moveTo(axis.start.x,axis.start.y);context.lineTo(axis.end.x,axis.end.y);context.stroke();context.font='22px "Segoe UI","Yu Gothic UI",sans-serif';context.textAlign=axis.end.x>=300?'right':'left';context.fillText(short(axis.caption,18),Math.max(10,Math.min(465,axis.end.x+(axis.end.x>=300?-6:6))),Math.max(40,Math.min(294,axis.end.y)));context.textAlign='left';}
+  const context=canvas.getContext('2d')!,g=plotLayout(model,geometry(model,orientation,angle),canvasMeasure(context));
+  context.save();context.fillStyle=colors.bg;context.fillRect(0,0,canvas.width,canvas.height);
+  const scale=Math.min(canvas.width/g.width,canvas.height/g.height);context.translate((canvas.width-g.width*scale)/2,(canvas.height-g.height*scale)/2);context.scale(scale,scale);
+  context.strokeStyle=colors.muted;context.lineWidth=1;
+  for(const axis of g.axes){context.beginPath();context.moveTo(axis.start.x,axis.start.y);context.lineTo(axis.end.x,axis.end.y);context.stroke();}
+  for(const leader of g.leaders){context.beginPath();context.moveTo(leader.start.x,leader.start.y);context.lineTo(leader.end.x,leader.end.y);context.stroke();}
+  context.save();context.beginPath();context.rect(g.plot.x,g.plot.y,g.plot.width,g.plot.height);context.clip();
   if(model.lines)for(let series=0;series<model.seriesNames.length;series++){const points=g.points.filter(p=>p.series===series);context.strokeStyle=colors.series[series%4];context.beginPath();points.forEach((p,i)=>i?context.lineTo(p.x,p.y):context.moveTo(p.x,p.y));context.stroke();}
   if(g.regression.length){context.strokeStyle=colors.series[1];context.setLineDash([5,4]);context.beginPath();context.moveTo(g.regression[0].x,g.regression[0].y);context.lineTo(g.regression[1].x,g.regression[1].y);context.stroke();context.setLineDash([]);}
   for(const p of [...g.points].sort((a,b)=>a.z-b.z)){context.fillStyle=colors.series[(model.seriesNames.length>1?p.series:p.cluster)%4];context.beginPath();context.arc(p.x,p.y,2.7,0,2*Math.PI);context.fill();}
-  context.fillStyle=colors.text;context.font='12px "Segoe UI","Yu Gothic UI",sans-serif';model.seriesNames.slice(0,2).forEach((name,i)=>context.fillText(short(name,58),10,316+i*16));context.restore();
+  context.restore();context.fillStyle=colors.text;context.textAlign='left';context.textBaseline='top';
+  for(const box of g.labels){context.font=font(box.font);box.lines.forEach((line,i)=>context.fillText(line,box.x,box.y+i*box.lineHeight));}
+  context.restore();
 }
-export function plotPNG(model:PlotModel,orientation:Orientation={yaw:0,pitch:0,roll:0},angle=0){const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;drawPlot(canvas,model,orientation,angle);return canvas.toDataURL('image/png');}
+export function plotPNG(model:PlotModel,orientation:Orientation={yaw:0,pitch:0,roll:0},angle=0,theme:ImageTheme='light'){const canvas=plotCanvas(model,1.5);drawPlot(canvas,model,orientation,angle,plotColors(theme));return canvas.toDataURL('image/png');}
 export function plotFilename(model:PlotModel){return 'analysis_'+model.labels.slice(0,model.dimension).map((label,i)=>'XYZ'[i]+'-'+label.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(0,48)).join('_');}
 export function objText(model:PlotModel){const text=['# CSV nyaan Viewer',...model.labels.slice(0,3).map((label,i)=>'# '+'XYZ'[i]+': '+label.replace(/[\r\n]/g,' '))];for(const p of model.points)text.push(`v ${p.x} ${p.y} ${p.z}`);for(let series=0;series<model.seriesNames.length;series++){text.push('o series_'+(series+1));const ids=model.points.flatMap((p,i)=>p.series===series?[i+1]:[]);for(const id of ids)text.push('p '+id);if(ids.length>1)text.push('l '+ids.join(' '));}return text.join('\n')+'\n';}
 export function seriesCorrelations(model:PlotModel){if(model.seriesNames.length<2)return [];const first=model.points.filter(p=>p.series===0),second=model.points.filter(p=>p.series===1);return ['x','y','z'].slice(0,model.dimension).map(key=>{const a=first.map(p=>p[key as 'x'|'y'|'z']),b=second.map(p=>p[key as 'x'|'y'|'z']);const ma=a.reduce((s,v)=>s+v,0)/a.length,mb=b.reduce((s,v)=>s+v,0)/b.length,cross=a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0),den=Math.sqrt(a.reduce((s,v)=>s+(v-ma)**2,0)*b.reduce((s,v)=>s+(v-mb)**2,0));return {axis:key.toUpperCase(),r:den?cross/den:null};});}

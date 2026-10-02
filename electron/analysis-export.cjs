@@ -7,7 +7,7 @@ function parseAddress(address){
   const result={row0:Number(match[2])-1,row1:Number(match[4]||match[2])-1,col0:column(match[1]),col1:column(match[3]||match[1])};if(!Object.values(result).every(Number.isSafeInteger))throw Error('セル番地が大きすぎます。');return result;
 }
 const safeName=name=>String(name||'analysis').replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/,'').slice(0,180)||'analysis';
-function pngData(image){if(typeof image!=='string'||!/^data:image\/png;base64,/.test(image)||image.length>8*1024*1024)throw Error('分析画像が不正です。');const data=Buffer.from(image.split(',')[1],'base64');if(data.subarray(0,8).toString('hex')!=='89504e470d0a1a0a')throw Error('PNG画像が不正です。');return data;}
+function pngData(image){if(typeof image!=='string'||!/^data:image\/png;base64,/.test(image)||image.length>8*1024*1024)throw Error('分析画像が不正です。');const data=Buffer.from(image.split(',')[1],'base64');if(data.length<24||data.subarray(0,8).toString('hex')!=='89504e470d0a1a0a'||data.subarray(12,16).toString()!=='IHDR')throw Error('PNG画像が不正です。');const width=data.readUInt32BE(16),height=data.readUInt32BE(20);if(!width||!height||width>16384||height>16384||width*height>64000000)throw Error('PNG画像のサイズが不正です。');return data;}
 function validateDocument(doc){
   if(!doc||!Array.isArray(doc.sections)||doc.sections.length>400||!Array.isArray(doc.plots)||doc.plots.length>300)throw Error('分析文書が不正です。');
   if(Buffer.byteLength(JSON.stringify(doc))>64*1024*1024)throw Error('分析文書は64 MiB以内です。');
@@ -27,8 +27,16 @@ async function writeAnalysis(doc,target,format){
       const summary=book.addWorksheet('分析結果');summary.columns=[{width:34},{width:26},{width:24},{width:24},{width:24},{width:24},{width:24}];
       for(const section of doc.sections){const heading=summary.addRow([section.title]);heading.font={bold:true,color:{argb:'FF0F6CBD'},size:14};for(const text of section.paragraphs){const r=summary.addRow([text]);summary.mergeCells(r.number,1,r.number,7);r.getCell(1).alignment={wrapText:true,vertical:'top'};r.height=Math.max(32,Math.min(120,Math.ceil(text.length/95)*18));}for(const t of section.tables||[]){const r=summary.addRow(t.headers);r.font={bold:true};r.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8F2FB'}};for(const row of t.rows)summary.addRow(row.map(v=>typeof v==='number'&&Number.isFinite(v)?v:v===null?'—':String(v)));}summary.addRow([]);}
       summary.views=[{state:'frozen',ySplit:1}];
-      const graphs=book.addWorksheet('グラフ'),data=book.addWorksheet('描画データ');graphs.getColumn(1).width=30;let top=1;
-      for(const plot of doc.plots){graphs.getCell(top,1).value=plot.title;graphs.getCell(top,1).font={bold:true};const id=book.addImage({buffer:pngData(plot.image),extension:'png'});graphs.addImage(id,{tl:{col:0,row:top},ext:{width:640,height:360},editAs:'oneCell'});top+=21;data.addRow([plot.title]);data.addRow(plot.headers).font={bold:true};for(const row of plot.rows)data.addRow(row.map(v=>typeof v==='number'&&Number.isFinite(v)?v:v===null?'':String(v)));data.addRow([]);}
+      const graphs=book.addWorksheet('グラフ'),data=book.addWorksheet('描画データ');graphs.properties.defaultRowHeight=15;graphs.columns=Array.from({length:9},()=>({width:10}));let top=1;
+      for(const plot of doc.plots){
+        const image=pngData(plot.image),width=image.readUInt32BE(16),height=image.readUInt32BE(20),scale=Math.min(640/width,720/height),ext={width:width*scale,height:height*scale};
+        const heading=graphs.getRow(top);heading.getCell(1).value=plot.title;heading.font={bold:true,size:12};heading.height=Math.max(24,Math.ceil(plot.title.length/46)*18);graphs.mergeCells(top,1,top,9);heading.getCell(1).alignment={wrapText:true,vertical:'middle'};
+        const id=book.addImage({buffer:image,extension:'png'});graphs.addImage(id,{tl:{col:0,row:top},ext,editAs:'oneCell'});
+        // Excel row heights use points; drawing dimensions use CSS pixels (96 dpi).
+        const imageRows=Math.ceil(ext.height*72/96/graphs.properties.defaultRowHeight);
+        for(let r=top+1;r<=top+imageRows;r++)graphs.getRow(r).height=15;
+        top+=imageRows+3;data.addRow([plot.title]);data.addRow(plot.headers).font={bold:true};for(const row of plot.rows)data.addRow(row.map(v=>typeof v==='number'&&Number.isFinite(v)?v:v===null?'':String(v)));data.addRow([]);
+      }
       data.columns=Array.from({length:8},()=>({width:25}));await book.xlsx.writeFile(temporary);
     }else throw Error('分析出力形式が不正です。');
     fs.renameSync(temporary,target);return target;
