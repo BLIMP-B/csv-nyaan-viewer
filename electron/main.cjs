@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, clipboard, Menu, shell, net, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard, Menu, shell, net, nativeImage, nativeTheme } = require('electron');
 const { Worker } = require('node:worker_threads');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -35,9 +35,10 @@ async function openFile(filePath, options = {}) {
   } catch (error) { closeFile(id); throw error; }
 }
 app.whenReady().then(() => {
+  nativeTheme.themeSource = readSettings().theme === 'dark' ? 'dark' : 'light';
   sharing.init(app.getPath('userData'));onlineCache=fs.mkdtempSync(path.join(app.getPath('temp'),'csv-nyaan-online-'));
   const customIcon=path.join(app.getPath('userData'),'app-icon.png'),bundledIcon=path.join(__dirname,'../assets/icon.png');
-  window = new BrowserWindow({ icon:fs.existsSync(customIcon)?customIcon:fs.existsSync(bundledIcon)?bundledIcon:undefined,width: 1440, height: 940, minWidth: 1000, minHeight: 560, titleBarStyle:'hidden', titleBarOverlay:{color:readSettings().theme==='dark'?'#242424':'#f5f5f5',symbolColor:readSettings().theme==='dark'?'#dedede':'#424242',height:34}, autoHideMenuBar:true, title: 'CSV nyaan Viewer', backgroundColor: '#f4f6f9', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  window = new BrowserWindow({ icon:fs.existsSync(customIcon)?customIcon:fs.existsSync(bundledIcon)?bundledIcon:undefined,width: 1440, height: 940, minWidth: 1000, minHeight: 560, titleBarStyle:'hidden', titleBarOverlay:{color:readSettings().theme==='dark'?'#242424':'#f5f5f5',symbolColor:readSettings().theme==='dark'?'#dedede':'#424242',height:34}, autoHideMenuBar:true, title: 'CSV nyaan Viewer', backgroundColor: nativeTheme.shouldUseDarkColors ? '#292929' : '#ffffff', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   window.setMenuBarVisibility(false);
   window.webContents.setWindowOpenHandler(({ url }) => url === 'about:blank' ? { action: 'allow', overrideBrowserWindowOptions: { width: 900, height: 550, minWidth: 420, minHeight: 280, autoHideMenuBar: true, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } } } : { action: 'deny' });
   window.webContents.on('will-navigate', event => event.preventDefault());
@@ -63,7 +64,7 @@ ipcMain.handle('csv:close', (_, id) => closeFile(id));
 ipcMain.handle('csv:cancel', () => { for (const id of files.keys()) if (files.get(id).pending.size) closeFile(id); });
 ipcMain.handle('csv:request', (_, { id, method, args }) => { if (!['configure','page','find','copy','text','selection','excludeSelection','selectedSources','sortColumns','move','analyze'].includes(method)) throw new Error('未対応の操作です。'); const entry = files.get(id); if (!entry) throw new Error('ファイルが閉じられています。再度開いてください。'); return request(entry, method, args); });
 ipcMain.handle('csv:clipboard', (_, text) => { if (typeof text === 'string') clipboard.writeText(text); });
-ipcMain.handle('csv:preferences', (_, patch) => { const settings = readSettings(); if (patch && typeof patch === 'object') { if(patch.theme&&window?.setTitleBarOverlay)window.setTitleBarOverlay({color:patch.theme==='dark'?'#242424':'#f5f5f5',symbolColor:patch.theme==='dark'?'#dedede':'#424242',height:34}); for (const key of ['theme','fontSize','fontFamily','accent','previewPosition','mergePosition','dockSizes','sidebarWidth']) if (key in patch) settings[key] = patch[key]; writeSettings(settings); } return settings; });
+ipcMain.handle('csv:preferences', (_, patch) => { const settings = readSettings(); if (patch && typeof patch === 'object') { if(patch.theme){nativeTheme.themeSource=patch.theme==='dark'?'dark':'light';window?.setBackgroundColor(nativeTheme.shouldUseDarkColors?'#292929':'#ffffff');} if(patch.theme&&window?.setTitleBarOverlay)window.setTitleBarOverlay({color:patch.theme==='dark'?'#242424':'#f5f5f5',symbolColor:patch.theme==='dark'?'#dedede':'#424242',height:34}); for (const key of ['theme','fontSize','fontFamily','accent','previewPosition','mergePosition','dockSizes','sidebarWidth']) if (key in patch) settings[key] = patch[key]; writeSettings(settings); } return settings; });
 ipcMain.handle('csv:reveal', (_, filePath) => shell.showItemInFolder(filePath));
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit',()=>{if(onlineCache)try{fs.rmSync(onlineCache,{recursive:true,force:true});}catch{}});

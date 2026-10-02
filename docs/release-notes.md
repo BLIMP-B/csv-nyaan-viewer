@@ -1,13 +1,15 @@
-Windows 10 / 11（x64）向け CSV nyaan Viewer 1.1.3です。
+Windows 10 / 11（x64）向け CSV nyaan Viewer 1.1.4です。
 
-「Assets」の `CSV-nyaan-Viewer-1.1.3-Windows-x64.zip` をすべて展開して `CSV nyaan Viewer.exe` を起動してください。Node.jsは不要です。
+「Assets」の `CSV-nyaan-Viewer-1.1.4-Windows-x64.zip` をすべて展開して `CSV nyaan Viewer.exe` を起動してください。Node.jsは不要です。
 
-- URL入力欄を「接続」の右側、「読み取り専用」の左側へ統合し、独立した入力行をなくしました。
-- 「ヘルプ → このアプリについて」にオブザーバー **BLINP_B(furoneko+)** を掲載。 https://github.com/yosu-yosu と https://yosuyosu.co.jp/ をブラウザで開けます。
-- 検証環境向けの自己署名コード署名証明書で実行ファイルへSHA-256署名。公開証明書 `test-signing.cer` を同梱します。秘密鍵は配布しません。
-- 配布前にAuthenticodeを検証し、実際の検証状態・署名者・実行ファイルのSHA-256を `SIGNATURE.json` に記録します。
+- ダークモードでペイン位置のプルダウンが白背景・薄い文字になる問題を修正。全画面の選択肢とグループ見出しにテーマの背景・文字色を明示しました。
+- Office／Excel／Teamsの全アクセントで、リンク・選択見出し・軸編集ヒントなどの文字コントラストを改善。ボタンの塗りと文字用のアクセント色を分けました。
+- 警告・エラー・削除ボタン・成功アイコン・入力欄の案内文字を共通テーマに対応させました。
+- グラフの軸名・ツールチップ・凡例のページ表示・データラベルを改善。縮小時の目盛りの重なりと軸名・凡例の余白も改善。分析図の軸の未定義色を修正し、点の色もテーマに合わせました。
+- 別ウィンドウでのテーマ切り替えと、Windowsのネイティブテーマの同期に対応。
+- 検証用の自己署名コード署名を継続。公開証明書 `test-signing.cer` と実行ファイルの署名検証結果 `SIGNATURE.json` を配布します。秘密鍵は配布しません。
 
-前版の指定アイコン、Excel・オンライン読み取り、グラフ・配色・分析、範囲選択、ペイン調整機能を含みます。コア／API契約／Excel／分析／描画／署名設定テスト61件とElectron UIテスト16件を実行するWindows自動ビルドです。ソースZIP・SHA-256チェックサム・署名検証結果を添付しています。
+前版のURL欄配置・オブザーバー表示・指定アイコン、Excel・オンライン読み取り、グラフ・分析、範囲選択、ペイン調整機能を含みます。コア／API契約／Excel／分析／描画／署名設定テスト61件とElectron UIテスト18件を実行するWindows自動ビルドです。ソースZIP・SHA-256チェックサム・署名検証結果を添付しています。[テーマ配色の確認](https://github.com/BLIMP-B/csv-nyaan-viewer/blob/main/docs/theme-audit.md) に確認対象と検証方法を記載しています。
 
 自己署名は認証局による本人・組織確認を受けた証明書ではありません。他のWindows環境で署名を信頼する場合は、公開証明書の拇印を確認して検証用アカウントへ手動登録してください。手順は [Windowsコード署名](https://github.com/BLIMP-B/csv-nyaan-viewer/blob/main/docs/code-signing.md) を参照してください。
 

@@ -107,11 +107,31 @@ test('結合ペイン・縦横結合・書き出し',async()=>{
   await page.getByRole('button',{name:'出力',exact:true}).click();await expect.poll(()=>fs.existsSync(path.join(output,'merged.csv'))).toBe(true);
 });
 test('ペインの配置変更と別ウィンドウ・テーマ切り替え',async()=>{
+  async function expectReadableOptions(target:Page,theme:'light'|'dark'){
+    await expect(target.locator('html')).toHaveAttribute('data-theme',theme);
+    const colors=await target.locator('select option,select optgroup').evaluateAll(items=>items.map(el=>({foreground:getComputedStyle(el).color,background:getComputedStyle(el).backgroundColor})));
+    expect(colors.length).toBeGreaterThan(0);
+    function luminance(color:string){
+      const channels=color.match(/[\d.]+/g)!.map(Number);expect(channels[3]??1).toBe(1);
+      const linear=channels.slice(0,3).map(value=>{const v=value/255;return v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4;});
+      return linear[0]*0.2126+linear[1]*0.7152+linear[2]*0.0722;
+    }
+    for(const {foreground,background} of colors){
+      const fg=luminance(foreground),bg=luminance(background);
+      expect((Math.max(fg,bg)+0.05)/(Math.min(fg,bg)+0.05)).toBeGreaterThanOrEqual(4.5);
+      if(theme==='dark')expect(bg).toBeLessThan(0.1);else expect(bg).toBeGreaterThan(0.9);
+    }
+  }
+  await expectReadableOptions(page,'light');
   await page.getByLabel('グラフプレビューの位置').selectOption('top');await expect(page.locator('.dock-slot.top canvas')).toBeVisible();
   await page.getByLabel('グラフプレビューの位置').selectOption('bottom');
   const popupPromise=app.waitForEvent('window');await page.getByLabel('グラフプレビューを別ウィンドウにする').click();const popup=await popupPromise;
-  await expect(popup.locator('canvas')).toBeVisible();await popup.getByLabel('メインウィンドウに戻す').click();await expect(page.locator('.dock-slot.bottom canvas')).toBeVisible();
+  await expect(popup.locator('canvas')).toBeVisible();await expectReadableOptions(popup,'light');
+  await page.getByLabel('テーマを切り替え').click();await expectReadableOptions(page,'dark');await expectReadableOptions(popup,'dark');
+  await page.getByLabel('テーマを切り替え').click();await expectReadableOptions(page,'light');await expectReadableOptions(popup,'light');
+  await popup.getByLabel('メインウィンドウに戻す').click();await expect(page.locator('.dock-slot.bottom canvas')).toBeVisible();
   await page.getByLabel('テーマを切り替え').click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+  await expectReadableOptions(page,'dark');
   await page.locator('.toast').waitFor({state:'hidden'});await page.screenshot({path:'docs/images/dashboard-dark.png'});
   await page.getByLabel('ファイル結合を閉じる').click();await page.getByLabel('グラフプレビューを閉じる').click();
 });

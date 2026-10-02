@@ -6,7 +6,7 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.1.3-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.1.4-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
@@ -22,11 +22,13 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 - 複数タブ、最近開いたファイル、検索（大文字小文字・セル一致・正規表現）、複数条件のフィルター、複数列の並べ替え、見出し行の指定・固定、列の固定・非表示・幅調整、範囲コピー、行・列への移動、全文セル表示。
 - 大容量ファイルはバイト位置を索引化し、表示部分だけを読む方式。表の縦横両方向を仮想化。
 - Markdownを直接プレビュー／ソース表示。TXTは引用符やカンマもそのまま表示。
-- M365 / Fluentを参考にしたライト・ダーク配色。Officeブルー、Excelグリーン、Teamsパープル。
+- M365 / Fluentを参考にしたライト・ダーク配色。Officeブルー、Excelグリーン、Teamsパープル。プルダウンの候補、警告・エラー、グラフの軸名・ツールチップ、別ウィンドウもテーマに追従します。
 - 選択範囲の数値グラフ、Ctrlによる離れた範囲の追加選択、列名・行ラベルの推定、PNG保存、選択範囲のMarkdown出力。
 - 複数ファイルの範囲、テキスト、表、グラフをMarkdownのブロック文書にまとめ、ブロックごとに編集・削除。表の縦・横結合と出力／共有も可能。
 - グラフプレビューは下段、結合ペインは右側が初期配置。開閉、上下左右への移動、ドット型つまみでの幅・高さ調整、別ウィンドウ化が可能。
 - Google、Microsoft、GitHubのOAuth接続設定とログイン。Slack・DiscordのBot／Webhook接続。共有先にMicrosoft Teamsを追加。
+
+配色の確認対象と検証方法は [テーマ配色の確認](docs/theme-audit.md) に記載しています。
 
 ![ダークモードのダッシュボード](docs/images/dashboard-dark.png)
 
@@ -148,7 +150,7 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.3-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.4-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 
