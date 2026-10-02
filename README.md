@@ -6,7 +6,7 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.3.1-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.3.2-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
@@ -187,7 +187,7 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.3.1-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.3.2-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 
@@ -206,4 +206,4 @@ npm run dist:win
 - MarkdownのHTML実行、外部画像の取得、埋め込みリンクの自動移動は行いません。同じ文書フォルダー内の相対パス画像は読み取り専用で表示します（1画像16 MiB以内・先頭50画像まで）。
 - 並べ替え・フィルターは全レコードの読み取りが必要で、ファイルサイズ・選択列に応じてCPUとメモリを使用します。
 
-Modern CSVとは独立した実装です。通信制限により現行Modern CSV無料版の公式機能一覧を照合できていないため、**「無料版の全機能を網羅」とはまだ断定できません**。実装範囲と未照合項目は [機能対応表](docs/features.md) に記載しています。
+実装機能と検証状況は [機能一覧](docs/features.md) に記載しています。
