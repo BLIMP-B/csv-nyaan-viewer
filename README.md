@@ -6,7 +6,7 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.1.7-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.1.8-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
@@ -28,6 +28,8 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 - 複数ファイルの範囲、テキスト、表、グラフをMarkdownのブロック文書にまとめ、ブロックごとに編集・削除。表の縦・横結合と出力／共有も可能。
 - グラフプレビューは下段、結合ペインは右側が初期配置。開閉、上下左右への移動、ドット型つまみでの幅・高さ調整、別ウィンドウ化が可能。
 - Google、Microsoft、GitHubのOAuth接続設定とログイン。Slack・DiscordのBot／Webhook接続。共有先にMicrosoft Teamsを追加。
+
+左サイド上部は「ワークスペース」「変量分析（選択範囲）」「多変量分析（ファイル全域）」を横並びのタブで切り替えます。選択中のタブを強調表示し、狭い幅では名前を折り返します。タブにフォーカスして左右矢印・Home・Endでも切り替えられます。ペインを閉じて開き直しても選択したモードを保持します。
 
 配色の確認対象と検証方法は [テーマ配色の確認](docs/theme-audit.md) に記載しています。
 
@@ -85,7 +87,7 @@ Office・Fluent・鮮やか・パステル・アース・色覚に配慮・ブ�
 
 ## Excelとオンラインファイル
 
-XLSX / XLS / XLSM / XLSB / XLTX / XLTM / XLT / XLAM / XLA、およびODS / FODS / SpreadsheetML XMLを直接読み込みます。CSVへの中間変換は行いません。シートは上部のプルダウンで切り替えます。保存された表示値・書式を利用し、数式は保存済みの結果を表示します。結果のない式は式文字列を表示します。マクロ・外部リンク更新・数式再計算は実行しません。Excel側ですでに丸められた数値を元の入力精度へ復元することはできません。
+XLSX / XLS / XLSM / XLSB / XLTX / XLTM / XLT / XLAM / XLA、およびODS / FODS / SpreadsheetML XMLを直接読み込みます。CSVへの中間変換は行いません。複数シートはデータ領域下端のタブで切り替えます。保存された表示値・書式を利用し、数式は保存済みの結果を表示します。結果のない式は式文字列を表示します。マクロ・外部リンク更新・数式再計算は実行しません。Excel側ですでに丸められた数値を元の入力精度へ復元することはできません。
 
 最上段の「接続」と「読み取り専用」の間にある入力欄へオンラインExcel／GoogleスプレッドシートURLを入力するか、URLを画面へドロップします。公開の直接ダウンロードURL、Google Sheetsの共有URL、Google Drive内のExcel、OneDrive／SharePointの共有URLを扱います。公開取得できないファイルはGoogle／Microsoftの接続設定でログインしてください。閲覧権限とAPI有効化が必要です。
 
@@ -153,11 +155,11 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.7-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.8-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 
-コア／共有API契約／Excel・分析・全グラフ描画テスト63件、Electron UIテスト18件。実接続の検証には利用者のOAuth登録・アカウントが必要です。この作業環境ではLinuxでZIPを生成し、テストしています。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
+コア／共有API契約／Excel・分析・全グラフ描画テスト65件、Electron UIテスト21件。実接続の検証には利用者のOAuth登録・アカウントが必要です。この作業環境ではLinuxでZIPを生成し、テストしています。GitHub Releases版はWindows runnerでテスト・生成する構成で、結果は [Actions](https://github.com/BLIMP-B/csv-nyaan-viewer/actions) で確認できます。Windows実機での手動起動は検証していません。
 
 100万レコード、約40.9 MiBの日本語CSVで索引生成約0.60秒、末尾10行の取得約1 ms、10万件へのフィルター＋数値ソート約2.27秒を測定しました。これは本環境の参考値です。詳細は [ベンチマーク結果](docs/benchmark.json) を参照してください。
 

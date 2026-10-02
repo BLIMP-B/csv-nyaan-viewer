@@ -48,6 +48,7 @@ test('ライト・ダークの全アクセントでメニュー・設定・共�
       await expect(page.locator('html')).toHaveAttribute('data-theme',theme);
       await expect.poll(()=>app.evaluate(({nativeTheme})=>nativeTheme.themeSource)).toBe(theme);
       await readableText(page);await page.getByRole('button',{name:'完了',exact:true}).click();await readableText(page);
+      for(const mode of ['変量分析（選択範囲）','多変量分析（ファイル全域）','ワークスペース']){await page.getByRole('tab',{name:mode,exact:true}).click();if(mode!=='ワークスペース')await expect(page.locator('.analysis-variable')).not.toHaveCount(0);await readableText(page);}
       const columnCell=page.locator('[data-row="0"][data-col="1"]'),rowCell=page.locator('[data-row="0"][data-col="0"]');
       const normalColor=await columnCell.evaluate(el=>getComputedStyle(el).color);
       await page.locator('.column-head[data-head-index="1"] .header-eye-zone').hover();await page.getByLabel('列Bを非表示',{exact:true}).click();
@@ -60,6 +61,9 @@ test('ライト・ダークの全アクセントでメニュー・設定・共�
       await expect(columnCell).toHaveCSS('color',normalColor);
       await page.locator('.menubar').getByRole('button',{name:'ファイル',exact:true}).click();await readableText(page);await page.locator('.menu-shield').click({position:{x:800,y:400}});
     }
+    await page.getByRole('tab',{name:'変量分析（選択範囲）',exact:true}).click();
+    const sidebar=(await page.locator('.sidebar').boundingBox())!;await page.screenshot({path:'docs/images/sidebar-mode-tabs-'+theme+'.png',clip:{x:sidebar.x,y:sidebar.y,width:sidebar.width,height:220}});
+    await page.getByRole('tab',{name:'ワークスペース',exact:true}).click();
     for(const name of ['フィルター','並べ替え','エクスポート']){
       await page.getByRole('button',{name,exact:true}).click();await readableText(page);await page.getByLabel('ダイアログを閉じる').click();
     }
@@ -79,9 +83,9 @@ test('両テーマで警告・エラーと分析図を確認する',async()=>{
   const warning=path.join(profile,'warning.csv');fs.writeFileSync(warning,'名前,数値\nA,1\nB,2,3\n');
   for(const theme of ['light','dark'] as const){
     await page.getByLabel('設定',{exact:true}).click();await page.getByLabel('カラープロファイル').selectOption(theme);await page.getByRole('button',{name:'完了',exact:true}).click();
-    await page.getByLabel('左サイドのモード').selectOption('multivariate');await expect(page.locator('.analysis-pca svg')).toBeVisible();
+    await page.getByRole('tab',{name:'多変量分析（ファイル全域）',exact:true}).click();await expect(page.locator('.analysis-pca svg')).toBeVisible();
     await expect(page.locator('.analysis-pca line').first()).not.toHaveCSS('stroke','none');await readableText(page);
-    await page.getByLabel('左サイドのモード').selectOption('workspace');
+    await page.getByRole('tab',{name:'ワークスペース',exact:true}).click();
     await page.getByLabel('オンラインExcel・スプレッドシートURL').fill('invalid-url');await page.locator('.online-bar').getByRole('button',{name:'開く',exact:true}).click();await expect(page.locator('.error-banner')).toBeVisible();await readableText(page);await page.locator('.error-banner button').click();
     await page.locator('.tab').first().getByRole('button').first().click();
     await page.locator('.dock-slot.bottom').getByRole('button',{name:'Y軸を編集',exact:true}).click();await page.getByLabel('軸の最小値').fill('10');await page.getByLabel('軸の最大値').fill('1');await page.locator('.axis-editor').getByRole('button',{name:'適用',exact:true}).click();await expect(page.locator('.axis-error')).toBeVisible();await readableText(page);await page.getByLabel('軸編集を閉じる').click();
