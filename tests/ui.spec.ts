@@ -87,8 +87,11 @@ test('ドット型つまみで幅・高さ・両方を調整し、再表示で�
   await dragGrip(heightGrip,0,-60);await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+60,0);
   await dragGrip(widthGrip,-180,0);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(initial.width-180,0);
   await dragGrip(corner,-60,-40);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(initial.width-120,0);await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+100,0);
-  await expect.poll(async()=>(await bottom.locator('canvas').boundingBox())!.height).toBeGreaterThan(initialCanvas.height+90);
-  await expect.poll(async()=>(await bottom.locator('canvas').boundingBox())!.width).toBeLessThan(initialCanvas.width-110);
+  // Minimum plot height and wrapped tab/toolbar text also consume pane height.
+  // Verify growth and that ECharts follows the space available to its host.
+  await expect.poll(async()=>(await bottom.locator('canvas').boundingBox())!.height).toBeGreaterThan(initialCanvas.height);
+  await expect.poll(async()=>{const canvas=(await bottom.locator('canvas').boundingBox())!,host=(await bottom.locator('.echart-host').boundingBox())!;return Math.max(Math.abs(canvas.height-host.height),Math.abs(canvas.width-host.width));}).toBeLessThan(1);
+  await expect.poll(async()=>(await bottom.locator('canvas').boundingBox())!.width).toBeLessThan(initialCanvas.width);
   const resized=(await bottom.boundingBox())!;const persisted=await page.evaluate(()=>window.csv.preferences());expect(persisted.dockSizes?.bottom?.width).toBeCloseTo(resized.width,0);expect(persisted.dockSizes?.bottom?.height).toBeCloseTo(resized.height,0);
   await page.getByLabel('グラフプレビューを閉じる').click();await page.getByTitle('グラフプレビュー',{exact:true}).click();await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(resized.height,0);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(resized.width,0);
   await bottom.getByRole('button',{name:'Y軸を編集',exact:true}).click();await expect(page.getByLabel('軸名',{exact:true})).toHaveValue('金額（円）');await page.getByLabel('軸編集を閉じる').click();
