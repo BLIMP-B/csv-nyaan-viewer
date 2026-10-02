@@ -21,3 +21,13 @@
 .app-icon{width:19px;height:19px;object-fit:contain}.settings-app-icon{width:48px;height:48px;object-fit:contain;display:block;margin-bottom:8px}
 .compact-titlebar .online-bar{flex:1 1 0;min-width:100px;height:24px;min-height:24px;padding:0 5px;gap:4px;border:1px solid var(--line);border-radius:4px;background:var(--bg);-webkit-app-region:no-drag}.compact-titlebar .online-bar>svg{flex-shrink:0}.compact-titlebar .online-bar input{width:0;height:22px;padding:2px 4px;font-size:10px}.compact-titlebar .online-bar button{padding:1px 7px;font-size:10px;flex-shrink:0}.compact-titlebar .titlebar-right{margin-left:0;flex-shrink:0}
 .about-content{font-size:12px;line-height:1.8}.about-identity{display:flex;align-items:center;gap:14px;margin:8px 0 18px}.about-identity img{width:48px;height:48px;object-fit:contain}.about-identity strong,.about-identity span{display:block}.about-identity strong{font-size:19px}.about-identity span{color:var(--muted);font-size:11px}.about-content dl{margin:18px 0}.about-content dt{font-size:11px;color:var(--muted)}.about-content dd{margin:0;font-weight:600}.about-links{display:grid;gap:8px}.about-links a{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);border-radius:5px;color:var(--accent-text);text-decoration:none}.about-links a:hover{background:var(--hover)}.about-links a:focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}.about-links small{display:block;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+
+/* The alphabet strip and raw file headings are independent grid rows. */
+.header-records{position:absolute;z-index:7;overflow-y:auto;overflow-x:hidden;background:var(--surface2)}
+.header-record-canvas{position:relative}
+.header-record{background:var(--surface2)}
+.header-record-number{display:grid;place-items:center;justify-content:stretch}
+
+.grid-row{z-index:0}
+
+.no-rows{position:absolute;left:0;width:100%;padding:24px 20px}

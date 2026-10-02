@@ -6,7 +6,7 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 
 配布ファイルは [GitHub Releases](https://github.com/BLIMP-B/csv-nyaan-viewer/releases/latest) の「Assets」から取得できます。Windows版ZIP・ソースZIP・SHA-256チェックサムを用意しています。
 
-1. `CSV-nyaan-Viewer-1.1.5-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
+1. `CSV-nyaan-Viewer-1.1.6-Windows-x64.zip`を任意のフォルダーに**すべて展開**します。
 2. `CSV nyaan Viewer.exe`を起動します。Node.jsのインストールは不要です。
 3. 「ファイル → 開く」、Ctrl+O、またはドラッグ＆ドロップでファイルを開きます。
 
@@ -53,6 +53,8 @@ Windows 10 / 11（x64）向けの読み取り専用CSV・Excel・Markdown・TXT�
 Markdownプレビュー内の表も、セルをクリック／Shift選択してグラフ・結合に利用できます。
 
 ## 行・列ヘッダーの操作
+
+最上段にはA・B・C…の列記号だけを表示します。ファイル内の見出しはその下に行番号1から独立した行として表示し、複数の見出し行も個別に表示します。見出し行数0では最初のレコードから通常のデータセルになります。見出しが多い場合は見出し部分を独立してスクロールでき、データ領域を確保します。見出しセルもダブルクリックで全文確認・コピーができます。
 
 中央にマウスを重ねると選択領域をハイライトします。クリックで行・列を選択し、押したまま別の見出しまでドラッグすると複数選択になります。複数選択のドラッグ終了時には「表示 / 非表示」「削除」のメニューを開きます。
 
@@ -150,7 +152,7 @@ npm run test:ui
 npm run dist:win
 ```
 
-`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.5-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
+`test:ui`は画面環境が必要です。LinuxではXvfbで実行します。Windowsビルドは`release/CSV-nyaan-Viewer-1.1.6-Windows-x64.zip`になります。GitHub ActionsのWindows用ワークフローも同梱しています。
 
 ## 検証範囲と上限
 

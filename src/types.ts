@@ -1,5 +1,5 @@
 export type Kind = 'csv' | 'text' | 'markdown' | 'excel';
-export interface Meta { sheets?:string[];sheet?:string;sourceUrl?:string;name?:string;id: string; kind: Kind; path: string; size: number; encoding: string; delimiter: string; bom: number; records: number; columns: number; headerRows: number; headers: string[]; count: number; lineEndings: string; warnings: string[] }
+export interface Meta { sheets?:string[];sheet?:string;sourceUrl?:string;name?:string;id: string; kind: Kind; path: string; size: number; encoding: string; delimiter: string; bom: number; records: number; columns: number; headerRows: number; headerRecords: string[][]; headers: string[]; count: number; lineEndings: string; warnings: string[] }
 export interface Row { index: number; source: number; cells: string[] }
 export interface Filter { column: number; mode: string; value: string; caseSensitive?: boolean }
 export interface Sort { column: number; direction: string; mode: string }

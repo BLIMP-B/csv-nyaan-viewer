@@ -222,13 +222,14 @@ class CsvFile {
     return row;
   }
   metadata() {
+    const headerRecords = Array.from({ length: this.headerRows }, (_, r) => this.row(r));
     const headers = [];
     for (let c = 0; c < this.columns; c++) {
-      const values = []; for (let r = 0; r < this.headerRows; r++) values.push(this.row(r)[c] || '');
+      const values = headerRecords.map(row => row[c] || '');
       headers.push(values.filter(Boolean).join(' / ') || columnName(c));
     }
     const lineEndings = Object.entries(this.newlines).filter(([,n]) => n > 0).map(([type]) => type).join(' / ') || 'なし';
-    return { kind: this.kind, path: this.path, size: this.size, encoding: this.encoding, delimiter: this.delimiter, bom: this.bom, records: this.starts.length, columns: this.columns, headerRows: this.headerRows, headers, count: this.count, lineEndings, warnings: this.warnings };
+    return { kind: this.kind, path: this.path, size: this.size, encoding: this.encoding, delimiter: this.delimiter, bom: this.bom, records: this.starts.length, columns: this.columns, headerRows: this.headerRows, headerRecords, headers, count: this.count, lineEndings, warnings: this.warnings };
   }
   get count() { return this.view ? this.view.length : Math.max(0, this.starts.length - this.headerRows); }
   sourceIndex(index) { return this.view ? this.view[index] : index + this.headerRows; }
