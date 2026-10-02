@@ -72,7 +72,10 @@ function verify() {
     }
     return frames.every(f => hashes.includes(f.hash));
   });
-  if (!group) throw Error('Executable does not contain the supplied ICO images in an icon group');
+  if (!group) {
+    const details = groups.map(g => ({ id: g.ids[1], lang: g.ids[2], directory: g.data.toString('hex') }));
+    throw Error('Executable does not contain the supplied ICO images in an icon group: ' + JSON.stringify(details));
+  }
   const bundled = asar.extractFile(path.join(path.dirname(executable), 'resources/app.asar'), 'assets/icon.png');
   const original = fs.readFileSync(path.join(root, 'assets/icon.png'));
   if (!bundled.equals(original)) throw Error('Packaged app PNG does not match the supplied icon');

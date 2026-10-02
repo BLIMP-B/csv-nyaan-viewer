@@ -4,14 +4,15 @@
 
 - `icon-source.jpg`: 添付された元画像（200 × 200）。
 - `icon.png`: 元画像の画素を保持したPNG。ウィンドウ・タスクバー・アプリ左上に表示します。
-- `icon.ico`: Windows実行ファイル用。16 / 24 / 32 / 48 / 64 / 128 / 256 pxを収録し、拡縮には最近傍法を使っています。
+- `icon.ico`: Windows実行ファイル用。16 / 24 / 32 / 48 / 64 / 128 / 256 pxをPNG圧縮で収録し、拡縮には最近傍法を使っています。
 
 ImageMagickで同じ素材を再生成できます。
 
 ```sh
-convert assets/icon-source.jpg -strip PNG32:assets/icon.png
-convert assets/icon.png -filter point -define icon:auto-resize=256,128,64,48,32,24,16 assets/icon.ico
+node scripts/generate-icons.cjs
 ```
+
+全サイズをPNG圧縮にすることで、リソース編集ツールが128 pxの無圧縮画像（64 KiB超）のサイズを切り詰める問題を避けています。
 
 WindowsビルドはICOを実行ファイルのリソースに設定します。`node scripts/verify-windows-icon.cjs` は、ビルドした実行ファイルのアイコングループにICOの全画像が含まれることと、アプリのアーカイブにPNGが同梱されることを確認します。GitHub Actionsでも配布ZIPの公開前に実行します。
 
