@@ -31,3 +31,13 @@
 .grid-row{z-index:0}
 
 .no-rows{position:absolute;left:0;width:100%;padding:24px 20px}
+
+/* Compact Excel-style sheet tabs below the data viewport. */
+.worksheet-bar{display:flex;flex-shrink:0;height:34px;min-width:0;background:var(--surface2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.worksheet-navigation{display:flex;align-items:center;flex-shrink:0;padding:0 3px;border-right:1px solid var(--line)}
+.worksheet-navigation .icon-btn{width:24px;height:26px;padding:0}
+.worksheet-tabs{display:flex;align-items:stretch;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.worksheet-tab{flex-shrink:0;min-width:64px;height:26px;margin:0;border:0;border-right:1px solid var(--line);border-bottom:2px solid transparent;border-radius:0;padding:0 14px;background:transparent;color:var(--text);font-size:11px;white-space:nowrap}
+.worksheet-tab:hover{background:var(--surface3)}
+.worksheet-tab.active{background:var(--bg);border-bottom-color:var(--accent-text);color:var(--accent-text);font-weight:600}
+.worksheet-tab:focus-visible{outline:2px solid var(--accent-text);outline-offset:-2px}

@@ -19,12 +19,15 @@ class WorkbookFile extends CsvFile {
       return instance;
     }catch(error){instance.close();throw error;}
   }
-  setSheet(name,headerRows=1){
+  setSheet(name,headerRows=this.requestedHeaderRows??1){
     if(!this.workbook.SheetNames.includes(name))throw Error('シートが見つかりません。');
     const sheet=this.workbook.Sheets[name],range=sheet['!ref']?XLSX.utils.decode_range(sheet['!ref']):null;
     const width=range?range.e.c+1:0, height=range?range.e.r+1:0;
     if(width*height>5000000)throw Error('Excelシートは500万セル以内です。');
-    this.sheet=name;this.columns=width;this.starts=new Float64Array(height);this.headerRows=Math.min(headerRows,height);
+    // Empty/short sheets clamp the effective count, but must not overwrite the
+    // user's heading setting when returning to a longer sheet.
+    this.requestedHeaderRows=Math.max(0,Math.min(30,headerRows));
+    this.sheet=name;this.columns=width;this.starts=new Float64Array(height);this.headerRows=Math.min(this.requestedHeaderRows,height);
     this.cells=Array.from({length:height},(_,r)=>Array.from({length:width},(_,c)=>{
       const cell=sheet[XLSX.utils.encode_cell({r,c})];if(!cell)return '';
       if(cell.f&&cell.v===undefined)return '='+cell.f;
@@ -34,8 +37,13 @@ class WorkbookFile extends CsvFile {
     return super.configure({headerRows:this.headerRows});
   }
   row(index){return this.cells[index]||[];}
-  metadata(){return {...super.metadata(),sheets:this.workbook.SheetNames,sheet:this.sheet,encoding:'workbook'};}
-  configure(options={},progress){if(options.sheet&&options.sheet!==this.sheet)return this.setSheet(options.sheet,options.headerRows??this.headerRows);return super.configure(options,progress);}
+  metadata(){return {...super.metadata(),sheets:this.workbook.SheetNames,sheet:this.sheet,requestedHeaderRows:this.requestedHeaderRows,encoding:'workbook'};}
+  configure(options={},progress){
+    if(options.sheet&&options.sheet!==this.sheet)return this.setSheet(options.sheet,options.headerRows??this.requestedHeaderRows);
+    const result=super.configure(options,progress);
+    if(options.headerRows!==undefined)this.requestedHeaderRows=Math.max(0,Math.min(30,options.headerRows));
+    return {...result,requestedHeaderRows:this.requestedHeaderRows};
+  }
   text(){return this.cells.map(row=>row.join('\t')).join('\n');}
 }
 module.exports={WorkbookFile,EXCEL_EXT};
