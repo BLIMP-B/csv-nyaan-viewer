@@ -2,6 +2,7 @@
 const fs=require('node:fs');
 const XLSX=require('@e965/xlsx');
 const {CsvFile}=require('./engine.cjs');
+const {meaningfulBounds,workbookProfile,sampleProfile,identitySpec,rowKey}=require('./analysis-profile.cjs');
 const EXCEL_EXT=/\.(?:xlsx|xls|xlsm|xlsb|xltx|xltm|xlt|xlam|xla|ods|fods|xml|gsheet-cache)$/i;
 class WorkbookFile extends CsvFile {
   constructor(filePath,options={}) {
@@ -21,8 +22,7 @@ class WorkbookFile extends CsvFile {
   }
   setSheet(name,headerRows=this.requestedHeaderRows??1){
     if(!this.workbook.SheetNames.includes(name))throw Error('シートが見つかりません。');
-    const sheet=this.workbook.Sheets[name],range=sheet['!ref']?XLSX.utils.decode_range(sheet['!ref']):null;
-    const width=range?range.e.c+1:0, height=range?range.e.r+1:0;
+    const sheet=this.workbook.Sheets[name],{width,height}=meaningfulBounds(sheet,XLSX);
     if(width*height>5000000)throw Error('Excelシートは500万セル以内です。');
     // Empty/short sheets clamp the effective count, but must not overwrite the
     // user's heading setting when returning to a longer sheet.
@@ -37,6 +37,29 @@ class WorkbookFile extends CsvFile {
     return super.configure({headerRows:this.headerRows});
   }
   row(index){return this.cells[index]||[];}
+  analysisProfile(){this.analysisProfiles??=new Map();if(!this.analysisProfiles.has(this.sheet))this.analysisProfiles.set(this.sheet,workbookProfile(this));return this.analysisProfiles.get(this.sheet);}
+  analysisSample(selections,all=false,limits={},visibility={}){
+    const profile=this.analysisProfile();
+    if(all){
+      // Different metric rows are separate populations, never mixed units.
+      if(profile.tables.length>1)return {headers:[],rows:[],sampleOrdinals:[],populationRows:0,populationColumns:0,truncated:false,keySchema:'partition:'+this.sheet,diagnostics:{...profile.diagnostics,notes:[...profile.diagnostics.notes,'全シートの一括結合では項目別表を除外します。分析シートで各項目を選択するか、指定テーブルを使用してください。']}};
+      return profile.tables.length?sampleProfile(profile.tables[0],limits):{headers:[],rows:[],sampleOrdinals:[],populationRows:0,populationColumns:0,truncated:false,diagnostics:profile.diagnostics};
+    }
+    const sample=super.analysisSample(selections,all,limits,visibility),byColumn=new Map(profile.columns.map((c,i)=>[c,profile.headers[i]]));
+    sample.headers=sample.sourceColumns.map((c,i)=>byColumn.get(c)||sample.headers[i]);
+    const fullHeaders=Array.from({length:this.columns},(_,c)=>byColumn.get(c)||this.metadata().headers[c]),spec=identitySpec(fullHeaders,this.cells.slice(profile.headerRow+1,profile.headerRow+50));
+    sample.columnRoles=sample.sourceColumns.map(c=>spec.roles[c]);sample.keySchema=spec.schema;sample.keyColumns=spec.keys.map(c=>fullHeaders[c]);
+    if(spec.keys.length)sample.rowLabels=sample.sourceRows.map(r=>rowKey(this.cells[r-1],spec));
+    sample.diagnostics={layout:'指定範囲',notes:['指定したセルを対象にします。識別番号・期間・分類は多変量分析の測定変量から除外します。'],excludedColumns:sample.headers.filter((_,c)=>sample.columnRoles[c]!=='measure'),keyColumns:sample.keyColumns};
+    return sample;
+  }
+  tableSnapshot(selections,visibility={},raw=false){
+    const table=super.tableSnapshot(selections,visibility,raw),profile=this.analysisProfile(),byColumn=new Map(profile.columns.map((c,i)=>[c,profile.headers[i]]));
+    table.headers=table.sourceColumns.map((c,i)=>byColumn.get(c)||table.headers[i]);
+    const headers=Array.from({length:this.columns},(_,c)=>byColumn.get(c)||this.metadata().headers[c]),spec=identitySpec(headers,this.cells.slice(profile.headerRow+1,profile.headerRow+50));
+    table.columnRoles=table.sourceColumns.map(c=>spec.roles[c]);table.keySchema=spec.schema;table.keyColumns=spec.keys.map(c=>headers[c]);
+    if(spec.keys.length)table.rowLabels=table.sourceRows.map(r=>rowKey(this.cells[r],spec));return table;
+  }
   metadata(){return {...super.metadata(),sheets:this.workbook.SheetNames,sheet:this.sheet,requestedHeaderRows:this.requestedHeaderRows,encoding:'workbook'};}
   configure(options={},progress){
     if(options.sheet&&options.sheet!==this.sheet){this.setSheet(options.sheet,options.headerRows??this.requestedHeaderRows);return super.configure({filters:options.filters||[],sorts:options.sorts||[],excludedRows:options.excludedRows||[]},progress);}

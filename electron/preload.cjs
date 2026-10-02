@@ -30,7 +30,7 @@ contextBridge.exposeInMainWorld('csv', {
   saveDocument: blocks => ipcRenderer.invoke('csv:saveDocument',blocks),
   image: (id,url) => ipcRenderer.invoke('csv:image',{id,url}),
   saveTable: (table, format) => ipcRenderer.invoke('csv:saveTable', { table, format }),
-  analyzeMany: sources => ipcRenderer.invoke('csv:analyzeMany',sources),
+  analyzeMany: (sources,options) => ipcRenderer.invoke('csv:analyzeMany',sources,options),
   saveAnalysis: (document,format) => ipcRenderer.invoke('csv:saveAnalysis',{document,format}),
   savePlot: (data,format,name) => ipcRenderer.invoke('csv:savePlot',{data,format,name}),
   saveChart: (data, format) => ipcRenderer.invoke('csv:saveChart', { data, format }),

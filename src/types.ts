@@ -28,7 +28,7 @@ declare global { interface Window { csv: {
   saveDocument(blocks:import('./data').MergeBlock[]): Promise<{path:string;size:number;assets:number}|null>;
   image(id:string,url:string):Promise<string>;
   saveTable(table: import('./data').TableData, format: string): Promise<{path:string;size:number}|null>;
-  analyzeMany(sources:(import('./analysis-types').AnalysisSource|{name:string;table:import('./analysis-types').SavedTable})[]):Promise<import('./analysis-types').AnalysisResult>;
+  analyzeMany(sources:(import('./analysis-types').AnalysisSource|{name:string;table:import('./analysis-types').SavedTable})[],options?:import('./analysis-types').AnalysisOptions):Promise<import('./analysis-types').AnalysisResult>;
   saveAnalysis(document:import('./analysis-types').AnalysisDocument,format:'md'|'xlsx'):Promise<string|null>;
   savePlot(data:string,format:'png'|'gif'|'obj',name:string):Promise<string|null>;
   saveChart(data:string, format:string): Promise<string|null>;

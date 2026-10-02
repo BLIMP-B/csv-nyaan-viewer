@@ -144,14 +144,14 @@ ipcMain.handle('csv:chooseIcon',async()=>{
 ipcMain.handle('csv:icon',()=>{const target=path.join(app.getPath('userData'),'app-icon.png'),bundled=path.join(__dirname,'../assets/icon.png');const source=fs.existsSync(target)?target:bundled;return fs.existsSync(source)?nativeImage.createFromPath(source).toDataURL():null;});
 
 // Analysis exports use the same original-file protection as ordinary exports.
-ipcMain.handle('csv:analyzeMany',async(_,sources)=>{
+ipcMain.handle('csv:analyzeMany',async(_,sources,options={})=>{
   const {aggregate,sampleTable}=require('./analysis-aggregation.cjs');
   return aggregate(sources,async(source,limits)=>{
     if(source.table)return sampleTable(source,limits);
     const entry=files.get(source.id);if(!entry)throw Error('集計元のファイルが閉じられています。');
     const visibility=source.all?{}:{hiddenRows:source.view?.hiddenRows||[],hiddenColumns:[...(source.view?.hidden||[]),...(source.view?.deletedColumns||[])],columns:source.view?.columnFilter};
     return request(entry,'analysisSampleSheet',{...source,visibility,limits});
-  });
+  },options);
 });
 ipcMain.handle('csv:saveAnalysis',async(_, {document,format})=>{
   const {safeName,writeAnalysis}=require('./analysis-export.cjs');if(!['md','xlsx'].includes(format))throw Error('分析出力形式が不正です。');

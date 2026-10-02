@@ -373,9 +373,13 @@ class CsvFile {
     const n=cols.length?Math.min(total,limits.rows??5000,Math.floor((limits.cells??250000)/cols.length)):0,rows=[],sourceRows=[],sampleOrdinals=[],rowLabels=[];const headerNames=this.metadata().headers;
     const ordinals=limits.ordinals||Array.from({length:n},(_,i)=>n===1?0:Math.floor(i*(total-1)/(n-1)));let segment=0,offset=0;
     for(const ordinal of ordinals){if(!Number.isInteger(ordinal)||ordinal<0||ordinal>=total||!cols.length)continue;while(segment<union.length-1&&ordinal>=offset+union[segment][1]-union[segment][0]+1){offset+=union[segment][1]-union[segment][0]+1;segment++;}const r=union[segment][0]+ordinal-offset,source=all?r+this.headerRows:this.sourceIndex(r),row=this.row(source);rows.push(cols.map(c=>all||ranges.some(s=>r>=Math.min(s.row0,s.row1)&&r<=Math.max(s.row0,s.row1)&&c>=Math.min(s.col0,s.col1)&&c<=Math.max(s.col0,s.col1))?row[c]||'':''));sourceRows.push(source+1);sampleOrdinals.push(ordinal);rowLabels.push(this.analysisRowLabel(row,headerNames,hiddenColumns,cols));}
-    return {headers:cols.map(c=>this.metadata().headers[c]),rows,sourceRows,sampleOrdinals,rowLabels,populationRows:total,populationColumns:allCols.length,truncated:rows.length<total||cols.length<allCols.length};
+    const {identitySpec,rowKey}=require('./analysis-profile.cjs'),spec=identitySpec(headerNames.map((h,c)=>hiddenColumns.has(c)?'':h),rows);
+    let rowKeys;
+    if(limits.rows===0&&total<=100000&&spec.keys.length){rowKeys=[];for(const [a,b]of union)for(let r=a;r<=b;r++)rowKeys.push(rowKey(this.row(all?r+this.headerRows:this.sourceIndex(r)),spec));}
+    return {headers:cols.map(c=>headerNames[c]),rows,sourceRows,sourceColumns:cols,sampleOrdinals,rowLabels,columnRoles:cols.map(c=>spec.roles[c]),keySchema:spec.schema,keyColumns:spec.keys.map(c=>headerNames[c]),...(rowKeys?{rowKeys}:{}),populationRows:total,populationColumns:allCols.length,truncated:rows.length<total||cols.length<allCols.length};
   }
   analysisRowLabel(row,headers,hiddenColumns,cols){
+    const {identitySpec,rowKey}=require('./analysis-profile.cjs'),spec=identitySpec(headers.map((h,c)=>hiddenColumns.has(c)?'':h));if(spec.keys.length)return rowKey(row,spec);
     const named=headers.findIndex((h,c)=>!hiddenColumns.has(c)&&/^(?:ID|名前|名称|日付|日時|年月|月|行名|キー|name|date|time|key)$/i.test(h));
     if(named>=0&&row[named]?.trim())return row[named];
     const {number}=require('./statistics.cjs');for(let c=0;c<Math.max(1,...cols.map(v=>v+1));c++)if(!hiddenColumns.has(c)&&row[c]?.trim()&&number(row[c])===null)return row[c];return null;
@@ -386,7 +390,8 @@ class CsvFile {
     for(const s of ranges){const r0=Math.max(0,Math.min(s.row0,s.row1)),r1=Math.min(count-1,Math.max(s.row0,s.row1)),c0=Math.max(0,Math.min(s.col0,s.col1)),c1=Math.min(this.columns-1,Math.max(s.col0,s.col1));if(![r0,r1,c0,c1].every(Number.isInteger))throw Error('セル範囲が不正です。');for(let c=c0;c<=c1;c++)if(!hiddenCols.has(c)&&(!visibility.columns||visibility.columns.includes(c)))columns.add(c);for(let r=r0;r<=r1;r++){const source=raw?r:this.sourceIndex(r);if(!hiddenRows.has(source))indices.add(r);if(indices.size>100000)throw Error('テーブルは100,000セル以内です。');}}
     const cols=[...columns].sort((a,b)=>a-b),rs=[...indices].sort((a,b)=>a-b);if(rs.length*cols.length>100000)throw Error('テーブルは100,000セル以内です。');if(!cols.length||!rs.length)throw Error('テーブルに含められる表示中のセルがありません。');
     let length=0;const mask=[],sources=[],rows=rs.map(r=>{const source=raw?r:this.sourceIndex(r);sources.push(source);const cells=this.row(source),selected=cols.filter(c=>ranges.some(s=>r>=Math.min(s.row0,s.row1)&&r<=Math.max(s.row0,s.row1)&&c>=Math.min(s.col0,s.col1)&&c<=Math.max(s.col0,s.col1)));mask.push(selected);const values=cols.map(c=>selected.includes(c)?cells[c]||'':'');length+=values.reduce((n,v)=>n+v.length,0);if(length>16*BLOCK)throw Error('テーブルの文字量が16 Mi文字を超えています。');return values;});
-    return {headers:cols.map(c=>this.metadata().headers[c]),rows,sourceRows:sources,sourceColumns:cols,mask,rowLabels:rs.map(r=>this.analysisRowLabel(this.row(raw?r:this.sourceIndex(r)),this.metadata().headers,hiddenCols,cols))};
+    const headers=this.metadata().headers,{identitySpec}=require('./analysis-profile.cjs'),spec=identitySpec(headers.map((h,c)=>hiddenCols.has(c)?'':h));
+    return {headers:cols.map(c=>headers[c]),rows,sourceRows:sources,sourceColumns:cols,mask,columnRoles:cols.map(c=>spec.roles[c]),keySchema:spec.schema,keyColumns:spec.keys.map(c=>headers[c]),rowLabels:rs.map(r=>this.analysisRowLabel(this.row(raw?r:this.sourceIndex(r)),headers,hiddenCols,cols))};
   }
   text() {
     this.checkChanged();
