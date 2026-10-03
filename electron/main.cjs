@@ -68,15 +68,27 @@ app.whenReady().then(() => {
 ipcMain.handle('csv:dialog', async () => (await dialog.showOpenDialog(window, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'CSV / Excel / Markdown / Text', extensions: ['csv','tsv','txt','psv','md','xlsx','xls','xlsm','xlsb','xltx','xltm','xlt','xlam','xla','ods','fods','xml'] }, { name: 'すべてのファイル', extensions: ['*'] }] })).filePaths);
 ipcMain.handle('csv:openUrl',async(_,url)=>{const source=await openOnline(url,{fetch:net.fetch,accessToken:sharing.accessToken,cacheDir:onlineCache});try{return await openFile(source.path,{...source.options,online:true,source});}catch(error){try{fs.unlinkSync(source.path);}catch{}throw error;}});
 ipcMain.handle('csv:open', (_, args) => openFile(args.path, args.options));
+let dockMinimumGeneration=0,dockFrameInsets={width:0,height:0};
 ipcMain.handle('csv:dockMinimum',async(_,size)=>{
   const target=window;if(!target||target.isDestroyed())return;
   if(!size||!Number.isFinite(size.width)||!Number.isFinite(size.height)||size.width<1000||size.width>2000||size.height<560||size.height>1200)throw Error('ウィンドウの最小サイズが不正です。');
-  // Hidden Windows titlebars can include frame pixels in getContentBounds.
-  // Measure the renderer client area so the data minimum remains visible.
-  const client=await target.webContents.executeJavaScript('({width:innerWidth,height:innerHeight})');if(target.isDestroyed()||target!==window)return;
-  const outer=target.getBounds(),width=Math.ceil(size.width),height=Math.ceil(size.height),frameWidth=Math.max(0,outer.width-client.width),frameHeight=Math.max(0,outer.height-client.height);
-  target.setMinimumSize(width+frameWidth,height+frameHeight);
-  if(client.width<width||client.height<height)target.setSize(Math.max(outer.width,width+frameWidth),Math.max(outer.height,height+frameHeight));
+  const generation=++dockMinimumGeneration,live=()=>!target.isDestroyed()&&target===window&&generation===dockMinimumGeneration;
+  const clientSize=()=>target.webContents.executeJavaScript('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve({width:innerWidth,height:innerHeight,outerWidth,outerHeight}))))');
+  const client=await clientSize();if(!live())return;
+  const outer=target.getBounds(),width=Math.ceil(size.width),height=Math.ceil(size.height);
+  dockFrameInsets={width:Math.max(dockFrameInsets.width,0,client.outerWidth-client.width),height:Math.max(dockFrameInsets.height,0,client.outerHeight-client.height)};
+  target.setMinimumSize(width+dockFrameInsets.width,height+dockFrameInsets.height);
+  if(client.width<width||client.height<height)target.setSize(Math.max(outer.width,width+dockFrameInsets.width),Math.max(outer.height,height+dockFrameInsets.height));
+  // Windows hidden frames can change their reported inset at the minimum.
+  // Calibrate from the resulting client area and retain the necessary inset.
+  for(let attempt=0;attempt<3;attempt++){
+    const actual=await clientSize();if(!live())return;
+    const dx=Math.max(0,width-actual.width),dy=Math.max(0,height-actual.height);if(!dx&&!dy)return;
+    const minimum=target.getMinimumSize(),native=target.getSize();
+    dockFrameInsets={width:Math.max(dockFrameInsets.width,minimum[0]-width+dx),height:Math.max(dockFrameInsets.height,minimum[1]-height+dy)};
+    target.setMinimumSize(width+dockFrameInsets.width,height+dockFrameInsets.height);
+    target.setSize(Math.max(native[0],width+dockFrameInsets.width),Math.max(native[1],height+dockFrameInsets.height));
+  }
 });
 ipcMain.handle('csv:tutorialSample',(_,kind)=>{const names={csv:'tutorial.csv',markdown:'tutorial.md',text:'tutorial.txt'};if(!Object.hasOwn(names,kind))throw Error('未対応の練習ファイルです。');return openFile(path.join(__dirname,'../assets',names[kind]),{tutorial:true});});
 ipcMain.handle('csv:close', (_, id) => closeFile(id));

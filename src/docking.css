@@ -6,7 +6,6 @@
 .docking-layout .welcome-art{flex-shrink:0}
 .docking-layout .welcome h1{font-size:clamp(20px,2.2vw,32px);max-width:100%;overflow-wrap:anywhere;text-align:center}
 .docking-layout .welcome-features{flex-wrap:wrap;justify-content:center;gap:14px}
-.dock-grip[aria-disabled=true]{cursor:default}
 .docking-editor{grid-area:center;position:relative;display:flex;min-width:0;min-height:0;overflow:hidden}
 .docking-editor.has-rail-left{padding-left:34px}.docking-editor.has-rail-right{padding-right:34px}
 .docking-editor.has-rail-top{padding-top:30px}.docking-editor.has-rail-bottom{padding-bottom:30px}
@@ -14,7 +13,7 @@
 .dock-content-host,.dock-tab-content,.pane-content{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden}
 .workspace-content{display:flex;flex-direction:column;flex:1;min-height:0;padding:10px 8px;background:var(--surface)}
 .pane-content>.analysis-panel{flex:1;min-height:0;overflow:auto;padding:8px;background:var(--surface)}
-.pane-content:has(>.chart-area){overflow:auto}.pane-content>.chart-area{flex:1 0 150px;min-height:150px}
+.pane-content:has(>.chart-viewport){overflow:auto}
 .dock-rail{position:absolute;z-index:20;display:grid;gap:0;background:var(--surface2);min-width:0;min-height:0}
 .rail-section{display:flex;align-items:stretch;gap:3px;min-width:0;min-height:0;overflow:auto;scrollbar-width:none;padding:0 1px}
 .rail-section::-webkit-scrollbar{display:none}.rail-section:first-child{justify-content:safe flex-end}.rail-section:last-child{justify-content:flex-start}
@@ -41,4 +40,4 @@
 .pane-dragging .dock-rail{outline:1px dashed var(--accent-text);outline-offset:-1px}
 /* Empty strip space leaves the boundary draggable; controls keep their own hits. */
 .dock-rail{pointer-events:none}.dock-edge-tab,.boundary-toggle{pointer-events:auto}
-.docking-layout .dock-boundary{z-index:22}.docking-layout .dock-grip{z-index:23}
+.docking-layout .dock-boundary{z-index:22}

@@ -1,0 +1,9 @@
+.chart-viewport{flex:1 0 180px;min-width:0;min-height:180px;width:100%;overflow:auto;padding:9px}
+.chart-resizable{position:relative;flex:none;min-width:220px;min-height:140px;padding:9px;border:1px solid var(--line);background:var(--bg)}
+.chart-resizable>.chart-area{width:100%;height:100%;min-height:0;padding:0;flex:none}
+.chart-grip{position:absolute;display:flex;align-items:center;justify-content:center;z-index:25;padding:0;border:0;border-radius:3px;background:var(--surface2);color:var(--muted);touch-action:none;user-select:none}
+.chart-grip:hover,.chart-grip:focus-visible{background:var(--accent-soft);color:var(--accent-text);outline:1px solid var(--accent-text)}
+.chart-grip.resize-height{width:42px;height:12px;left:50%;transform:translateX(-50%);cursor:ns-resize}
+.chart-grip.resize-width{width:12px;height:42px;top:50%;transform:translateY(-50%);cursor:ew-resize}
+.chart-grip.edge-top{top:0}.chart-grip.edge-bottom{bottom:0}.chart-grip.edge-left{left:0}.chart-grip.edge-right{right:0}
+.chart-grip.resize-both{width:17px;height:18px;cursor:nwse-resize}

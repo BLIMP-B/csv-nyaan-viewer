@@ -23,7 +23,7 @@ export function Docking({layout,onChange,prefs,ready,onPreferences,content,tools
   useLayoutEffect(()=>{if(!ready||!bounds.width||!bounds.height||initial)return;const seed=initialDockRatios(bounds,layout,prefs);setInitial(seed);onPreferences({dockRatios:seed});},[ready,bounds.width,bounds.height,initial]);
   const ratios:DockRatios={...(initial||initialDockRatios(bounds,layout,prefs)),...prefs.dockRatios},calculated=dockGeometry(bounds,layout,ratios),geometry=draft||calculated,minCenter=centerMinimum(layout);
   const windowMinimum=dockWindowMinimum(layout);
-  useEffect(()=>{if(ready)window.csv.dockMinimum(windowMinimum).catch(()=>{});},[ready,windowMinimum.width,windowMinimum.height]);
+  useEffect(()=>{if(ready)window.csv.dockMinimum(windowMinimum).catch(()=>{});},[ready,windowMinimum.width,windowMinimum.height,bounds.width,bounds.height]);
   function limits(position:DockPosition):PaneLimits {
     if(horizontal(position)){const donor=crossWidthDonor(geometry,'right'),other=position==='top'?'bottom':'top',maximum=(edge:'left'|'right')=>{const id=crossWidthDonor(geometry,edge);return id?geometry.centerWidth+geometry.tracks[id]-geometry.minimums[id]:geometry.centerWidth;};return {minWidth:donor?minCenter.width:geometry.centerWidth,maxWidth:maximum('right'),maxWidthLeft:maximum('left'),maxWidthRight:maximum('right'),minHeight:geometry.minimums[position],maxHeight:geometry.height-geometry.tracks[other]-minCenter.height};}
     const other=position==='left'?'right':'left';return {minWidth:geometry.minimums[position],maxWidth:geometry.width-geometry.tracks[other]-minCenter.width,minHeight:geometry.height,maxHeight:geometry.height};

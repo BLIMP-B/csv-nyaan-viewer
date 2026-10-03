@@ -80,30 +80,25 @@ test('下段の軸をホバーで選択し、クリックで編集・出力・�
   await app.evaluate(({dialog},target)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:target});},path.join(output,'axes.png'));await bottom.getByRole('button',{name:'PNG保存',exact:true}).click();await expect.poll(()=>fs.existsSync(path.join(output,'axes.png'))).toBe(true);
   expect(fs.readFileSync(path.join(output,'axes.png')).equals(fs.readFileSync(path.join(output,'chart.png')))).toBe(false);
 });
-test('ドット型つまみで幅・高さ・両方を調整し、再表示でも保持',async()=>{
-  // Horizontal previews share the data column. Open a side pane so width
-  // resizing reallocates that column instead of leaving an empty rectangle.
-  if(!await page.locator('.dock-slot.left').count())await page.getByLabel('左ペインを開閉').click();
-  const bottom=page.locator('.dock-slot.bottom'), heightGrip=bottom.getByRole('separator',{name:'下ペインの高さを調整（上）',exact:true}), widthGrip=bottom.getByRole('separator',{name:'下ペインの幅を調整（右）',exact:true}), corner=bottom.getByRole('button',{name:'下ペインの幅と高さを調整（左上）',exact:true});
+test('グラフ内のドット型つまみだけで描画サイズを変更し、ペインとデータ領域を変えず再表示・移動でも保持',async()=>{
+  const bottom=page.locator('.dock-slot.bottom');await expect(page.locator('.dock-grip')).toHaveCount(0);
+  const boundary=bottom.getByRole('separator',{name:'下ペインとデータの境界',exact:true});await boundary.focus();await boundary.press('Shift+ArrowUp');await boundary.press('Shift+ArrowUp');await boundary.press('Shift+ArrowUp');
+  const plot=bottom.locator('.chart-resizable'),heightGrip=plot.getByRole('separator',{name:'グラフの高さを調整（上）',exact:true}),widthGrip=plot.getByRole('separator',{name:'グラフの幅を調整（右）',exact:true}),corner=plot.getByRole('button',{name:'グラフの幅と高さを調整（左上）',exact:true});
   async function dragGrip(grip:ReturnType<Page['locator']>,dx:number,dy:number){const rect=(await grip.boundingBox())!;await page.mouse.move(rect.x+rect.width/2,rect.y+rect.height/2);await page.mouse.down();await page.mouse.move(rect.x+rect.width/2+dx,rect.y+rect.height/2+dy,{steps:10});await page.mouse.up();}
-  await expect(heightGrip.locator('circle')).toHaveCount(6);await expect(widthGrip.locator('circle')).toHaveCount(6);
-  const initial=(await bottom.boundingBox())!, initialCanvas=(await bottom.locator('canvas').boundingBox())!;
-  await dragGrip(heightGrip,0,-60);await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+60,0);
-  await dragGrip(widthGrip,-180,0);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(initial.width-180,0);
-  await dragGrip(corner,-60,-40);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(initial.width-120,0);await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+100,0);
-  // Minimum plot height and wrapped tab/toolbar text also consume pane height.
-  // Verify growth and that ECharts follows the space available to its host.
-  await expect.poll(async()=>(await bottom.locator('canvas').boundingBox())!.height).toBeGreaterThan(initialCanvas.height);
+  await expect(plot.locator('.chart-grip')).toHaveCount(6);await expect(heightGrip.locator('circle')).toHaveCount(6);await expect(widthGrip.locator('circle')).toHaveCount(6);
+  const initial=(await plot.boundingBox())!,pane=(await bottom.boundingBox())!,data=(await page.locator('.docking-editor').boundingBox())!;await expect.poll(()=>page.evaluate(()=>window.csv.preferences().then(p=>p.dockSizes?.bottom?.height))).toBeCloseTo(pane.height,0);const prefs=await page.evaluate(()=>window.csv.preferences());
+  await dragGrip(heightGrip,0,60);await expect.poll(async()=>(await plot.boundingBox())!.height).toBeCloseTo(initial.height-60,0);
+  await dragGrip(widthGrip,-180,0);await expect.poll(async()=>(await plot.boundingBox())!.width).toBeCloseTo(initial.width-180,0);
+  await dragGrip(corner,-60,-40);await expect.poll(async()=>(await plot.boundingBox())!.width).toBeCloseTo(initial.width-120,0);await expect.poll(async()=>(await plot.boundingBox())!.height).toBeCloseTo(initial.height-20,0);
+  expect(await bottom.boundingBox()).toEqual(pane);expect(await page.locator('.docking-editor').boundingBox()).toEqual(data);expect(await page.evaluate(()=>window.csv.preferences().then(p=>p.dockRatios))).toEqual(prefs.dockRatios);
   await expect.poll(async()=>{const canvas=(await bottom.locator('canvas').boundingBox())!,host=(await bottom.locator('.echart-host').boundingBox())!;return Math.max(Math.abs(canvas.height-host.height),Math.abs(canvas.width-host.width));}).toBeLessThan(1);
-  await expect.poll(async()=>(await bottom.locator('canvas').boundingBox())!.width).toBeLessThan(initialCanvas.width);
-  const resized=(await bottom.boundingBox())!;const persisted=await page.evaluate(()=>window.csv.preferences());expect(persisted.dockSizes?.bottom?.width).toBeCloseTo(resized.width,0);expect(persisted.dockSizes?.bottom?.height).toBeCloseTo(resized.height,0);
-  await page.getByLabel('グラフプレビューを閉じる').click();await page.getByTitle('グラフプレビュー',{exact:true}).click();await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(resized.height,0);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(resized.width,0);
+  const resized=(await plot.boundingBox())!;await page.getByLabel('グラフプレビューを閉じる').click();await page.locator('#dock-tab-chart').click();await expect.poll(async()=>(await plot.boundingBox())!.height).toBeCloseTo(resized.height,0);await expect.poll(async()=>(await plot.boundingBox())!.width).toBeCloseTo(resized.width,0);
   await bottom.getByRole('button',{name:'Y軸を編集',exact:true}).click();await expect(page.getByLabel('軸名',{exact:true})).toHaveValue('金額（円）');await page.getByLabel('軸編集を閉じる').click();
   await corner.hover();await page.screenshot({path:'docs/images/dot-resize-grips.png'});
-  await dragGrip(heightGrip,0,2000);await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(180,0);
-  await dragGrip(widthGrip,-2000,0);await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(360,0);
-  await corner.dblclick();await expect.poll(async()=>(await bottom.boundingBox())!.width).toBeCloseTo(initial.width,0);await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height,0);
-  await heightGrip.focus();await heightGrip.press('ArrowUp');await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height+16,0);await heightGrip.press('Home');await expect.poll(async()=>(await bottom.boundingBox())!.height).toBeCloseTo(initial.height,0);
+  await dragGrip(heightGrip,0,2000);await expect.poll(async()=>(await plot.boundingBox())!.height).toBeCloseTo(140,0);await dragGrip(widthGrip,-2000,0);await expect.poll(async()=>(await plot.boundingBox())!.width).toBeCloseTo(220,0);
+  await corner.dblclick();await expect.poll(async()=>(await plot.boundingBox())!.width).toBeCloseTo(initial.width,0);await expect.poll(async()=>(await plot.boundingBox())!.height).toBeCloseTo(initial.height,0);
+  await heightGrip.focus();await heightGrip.press('ArrowDown');await expect.poll(async()=>(await plot.boundingBox())!.height).toBeCloseTo(initial.height-16,0);await heightGrip.press('Home');await expect.poll(async()=>(await plot.boundingBox())!.height).toBeCloseTo(initial.height,0);
+  const box=(await widthGrip.boundingBox())!;await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x-80,box.y+box.height/2);await page.keyboard.press('Escape');await page.mouse.up();await expect.poll(async()=>(await plot.boundingBox())!.width).toBeCloseTo(initial.width,0);
 });
 test('結合ペイン・縦横結合・書き出し',async()=>{
   await page.getByTitle('ファイル結合',{exact:true}).click();await expect(page.locator('.dock-slot.right')).toBeVisible();
