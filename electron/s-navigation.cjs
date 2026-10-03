@@ -12,4 +12,8 @@ function failureMessage(code,description=''){
   return {title:'サービスのページを開けませんでした',message:reason,detail:(detail?detail+' ':'')+'('+code+')'};
 }
 function entryURL(entry){try{return browserURL(entry.view.webContents.getURL());}catch{return entry.targetURL||service(entry.service.id).url;}}
-module.exports={aborted,failureMessage,entryURL};
+// Present the actual Chromium engine as a web browser. Electron-specific tokens
+// can make web apps expect their own native desktop bridge, which is absent here.
+function browserAgent(value){const match=String(value).match(/^(.+?\(KHTML, like Gecko\))\s+.*?(Chrome\/[\d.]+)\s+.*?(Safari\/[\d.]+).*$/);return match?match[1]+' '+match[2]+' '+match[3]:value;}
+const visiblePageScript=`(()=>{if(!document.body)return false;if(document.body.innerText.trim())return true;return [...document.querySelectorAll('img,svg,canvas,iframe,input,button,video')].some(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility==='visible'&&(el.tagName!=='IMG'||el.complete&&el.naturalWidth>0);});})()`;
+module.exports={aborted,failureMessage,entryURL,browserAgent,visiblePageScript};
