@@ -66,6 +66,22 @@ jobs:
         run: node scripts/verify-windows-icon.cjs
       - name: Verify Windows code signature
         run: ./scripts/verify-windows-signature.ps1
+      - name: Verify packaged S browser rendering for all services
+        timeout-minutes: 3
+        run: node scripts/check-s-browser-live.cjs --packaged --fixture-only
+      - name: Check public S browser pages without login
+        timeout-minutes: 6
+        continue-on-error: true
+        run: node scripts/check-s-browser-live.cjs --packaged
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: S-browser-public-page-check
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            release/S-BROWSER-PACKAGED-RENDERING.json
+            release/S-BROWSER-PUBLIC-PAGES.json
       - name: Package source and checksums
         id: package
         run: node scripts/package-release.cjs
