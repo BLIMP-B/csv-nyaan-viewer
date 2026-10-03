@@ -14,7 +14,7 @@
 .workspace-content{display:flex;flex-direction:column;flex:1;min-height:0;padding:10px 8px;background:var(--surface)}
 .pane-content>.analysis-panel{flex:1;min-height:0;overflow:auto;padding:8px;background:var(--surface)}
 .pane-content:has(>.chart-viewport){overflow:auto}
-.dock-rail{position:absolute;z-index:20;display:flex;align-items:center;justify-content:safe center;background:var(--surface2);min-width:0;min-height:0}
+.dock-rail{position:absolute;z-index:20;display:flex;align-items:stretch;justify-content:safe center;background:var(--surface2);min-width:0;min-height:0}
 .rail-section{display:flex;flex:0 1 auto;align-items:stretch;gap:3px;min-width:0;min-height:0;max-width:100%;max-height:100%;overflow:auto;scrollbar-width:none;padding:0 1px}
 .rail-section::-webkit-scrollbar{display:none}
 .rail-left,.rail-right{top:9px;bottom:9px;width:28px;flex-direction:column}
