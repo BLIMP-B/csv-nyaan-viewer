@@ -1,6 +1,17 @@
 import type {geometry,PlotModel} from './analysis-plot';
 export interface TextBox {lines:string[];x:number;y:number;width:number;height:number;font:number;lineHeight:number}
 export type TextMeasure=(text:string,font:number)=>number;
+export function centerLabelLayout<T extends {x:number;y:number;label:string}>(centers:T[],rect:{x:number;y:number;width:number;height:number},measure:TextMeasure) {
+  const boxes:(TextBox&{center:T})[]=[];
+  const overlap=(a:{x:number;y:number;width:number;height:number},b:{x:number;y:number;width:number;height:number})=>Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x))*Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y));
+  for(const center of centers){
+    const font=11,lineHeight=14,maxWidth=Math.min(140,rect.width-16),lines=wrapText(center.label,maxWidth,font,measure,2),width=Math.max(...lines.map(line=>measure(line,font))),height=lines.length*lineHeight;
+    const candidates=[0,-20,20,-40,40,-60,60,-80,80].flatMap(dy=>[12,-width-12].map(dx=>({x:Math.max(rect.x+4,Math.min(rect.x+rect.width-width-4,center.x+dx)),y:Math.max(rect.y+4,Math.min(rect.y+rect.height-height-4,center.y-height/2+dy)),width,height})));
+    const cost=(box:typeof candidates[number])=>boxes.reduce((n,b)=>n+overlap({...box,x:box.x-3,y:box.y-3,width:box.width+6,height:box.height+6},b)*1000,0)+centers.reduce((n,c)=>n+overlap(box,{x:c.x-8,y:c.y-8,width:16,height:16})*100,0)+Math.hypot(box.x+width/2-center.x,box.y+height/2-center.y);
+    candidates.sort((a,b)=>cost(a)-cost(b));boxes.push({...candidates[0],font,lineHeight,lines,center});
+  }
+  return boxes;
+}
 export function wrapText(text:string,width:number,font:number,measure:TextMeasure,maxLines=3):string[] {
   const chars=[...text.replace(/\s+/g,' ').trim()],lines:string[]=[];let line='';
   for(let i=0;i<chars.length;i++) {
@@ -21,7 +32,7 @@ export function plotLayout(model:PlotModel,g:ReturnType<typeof geometry>,measure
   let top=title.y+title.height+18;
   if(model.dimension===2){const y=text(captions[1],86,top,530,14,20);top=y.y+y.height+16;}
   const plot=model.dimension===3?{x:170,y:top,width:300,height:300}:{x:86,y:top,width:530,height:300};
-  const normalized=g.points.map(p=>({x:(p.x-240)/132,y:(160-p.y)/106,z:p.z}));
+  const normalized=[...g.points,...g.centers].map(p=>({x:(p.x-240)/132,y:(160-p.y)/106,z:p.z}));
   const bounds=['x','y'].map(axis=>{const values=normalized.map(p=>p[axis as 'x'|'y']);return {min:Math.min(0,...values),max:Math.max(0,...values)};});
   const uniformScale=Math.min((plot.width-24)/(bounds[0].max-bounds[0].min||2),(plot.height-24)/(bounds[1].max-bounds[1].min||2));
   const origin={x:plot.x+plot.width/2-(bounds[0].max+bounds[0].min)*uniformScale/2,y:top+plot.height/2+(bounds[1].max+bounds[1].min)*uniformScale/2};
@@ -47,5 +58,5 @@ export function plotLayout(model:PlotModel,g:ReturnType<typeof geometry>,measure
   let bottom=top+plot.height+18;
   if(model.dimension===2){const x=text(captions[0],86,bottom,530,14,20);bottom=x.y+x.height+14;}
   for(const name of model.seriesNames.slice(0,2)){const legend=text(name,18,bottom,604,12,18);bottom+=legend.height+6;}
-  return {width:640,height:Math.ceil(bottom+12),labels,plot,axes,leaders,points:g.points.map(project),regression:g.regression.map(project)};
+  return {width:640,height:Math.ceil(bottom+12),labels,plot,axes,leaders,points:g.points.map(project),centers:g.centers.map(project),regression:g.regression.map(project)};
 }
