@@ -1,4 +1,5 @@
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import {launchWithoutTutorial} from './electron-profile';
+import { test, expect, type ElectronApplication, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -6,7 +7,7 @@ test.describe.configure({mode:'serial'});
 let app:ElectronApplication,page:Page;
 const errors:string[]=[], root=process.cwd(),output=fs.mkdtempSync(path.join(os.tmpdir(),'csv-lens-ui-'));
 test.beforeAll(async()=>{
-  app=await electron.launch({args:['--no-sandbox','--user-data-dir='+path.join(output,'profile'),'.',path.join(root,'samples/sales.csv')],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});
+  app=await launchWithoutTutorial({args:['--no-sandbox','--user-data-dir='+path.join(output,'profile'),'.',path.join(root,'samples/sales.csv')],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});
   page=await app.firstWindow();page.on('pageerror',error=>errors.push(error.message));
   await expect(page.locator('.document-heading h1')).toContainText('sales.csv',{timeout:30000});
   await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000',{timeout:30000});
@@ -80,6 +81,9 @@ test('下段の軸をホバーで選択し、クリックで編集・出力・�
   expect(fs.readFileSync(path.join(output,'axes.png')).equals(fs.readFileSync(path.join(output,'chart.png')))).toBe(false);
 });
 test('ドット型つまみで幅・高さ・両方を調整し、再表示でも保持',async()=>{
+  // Horizontal previews share the data column. Open a side pane so width
+  // resizing reallocates that column instead of leaving an empty rectangle.
+  if(!await page.locator('.dock-slot.left').count())await page.getByLabel('左ペインを開閉').click();
   const bottom=page.locator('.dock-slot.bottom'), heightGrip=bottom.getByRole('separator',{name:'下ペインの高さを調整（上）',exact:true}), widthGrip=bottom.getByRole('separator',{name:'下ペインの幅を調整（右）',exact:true}), corner=bottom.getByRole('button',{name:'下ペインの幅と高さを調整（左上）',exact:true});
   async function dragGrip(grip:ReturnType<Page['locator']>,dx:number,dy:number){const rect=(await grip.boundingBox())!;await page.mouse.move(rect.x+rect.width/2,rect.y+rect.height/2);await page.mouse.down();await page.mouse.move(rect.x+rect.width/2+dx,rect.y+rect.height/2+dy,{steps:10});await page.mouse.up();}
   await expect(heightGrip.locator('circle')).toHaveCount(6);await expect(widthGrip.locator('circle')).toHaveCount(6);

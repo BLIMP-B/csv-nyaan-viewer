@@ -1,4 +1,5 @@
-import {test,expect,_electron as electron,type ElectronApplication,type Page} from '@playwright/test';
+import {launchWithoutTutorial} from './electron-profile';
+import {test,expect,type ElectronApplication,type Page} from '@playwright/test';
 import {readableText} from './ui-contrast';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 const XLSX=require('@e965/xlsx'),root=process.cwd(),out=fs.mkdtempSync(path.join(os.tmpdir(),'csv-analysis-ui-')),file=path.join(out,'Book.xlsx'),csv=path.join(out,'Third.csv');
@@ -6,7 +7,7 @@ const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.ao
 const original=fs.readFileSync(file),originalCsv=fs.readFileSync(csv);let app:ElectronApplication,page:Page;const errors:string[]=[];
 const cell=(r:number,c:number)=>page.locator(`[data-row="${r}"][data-col="${c}"]`),mode=(name:string)=>page.getByRole('tab',{name,exact:true});
 test.describe.configure({mode:'serial'});
-test.beforeAll(async()=>{app=await electron.launch({args:['--no-sandbox','--user-data-dir='+path.join(out,'profile'),'.',file],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(cell(0,1)).toHaveText('1',{timeout:30000});await page.getByLabel('左ペインを開閉').click();});
+test.beforeAll(async()=>{app=await launchWithoutTutorial({args:['--no-sandbox','--user-data-dir='+path.join(out,'profile'),'.',file],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(cell(0,1)).toHaveText('1',{timeout:30000});await page.getByLabel('左ペインを開閉').click();});
 test.afterAll(async()=>{await app.close();expect(errors).toEqual([]);expect(fs.readFileSync(file)).toEqual(original);expect(fs.readFileSync(csv)).toEqual(originalCsv);});
 async function saveTo(target:string){await app.evaluate(({dialog},target)=>{dialog.showSaveDialog=async(...args:any[])=>{(dialog as any).lastAnalysisPath=args.at(-1)?.defaultPath;return {canceled:false,filePath:target};};},target);}
 async function range(r:number,c:number){await cell(0,1).click();await cell(r,c).click({modifiers:['Shift']});}

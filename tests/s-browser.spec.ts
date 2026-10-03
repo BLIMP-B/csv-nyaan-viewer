@@ -1,10 +1,11 @@
-import {test,expect,_electron as electron,type ElectronApplication,type Page} from '@playwright/test';
+import {launchWithoutTutorial} from './electron-profile';
+import {test,expect,type ElectronApplication,type Page} from '@playwright/test';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 import {readableText} from './ui-contrast';
 const root=process.cwd(),dir=fs.mkdtempSync(path.join(os.tmpdir(),'s-browser-ui-')),profile=path.join(dir,'profile'),file=path.join(root,'samples/sales.csv'),original=fs.readFileSync(file);
 let app:ElectronApplication,page:Page;const errors:string[]=[];
 test.describe.configure({mode:'serial'});
-async function launch(){app=await electron.launch({args:['--no-sandbox','--user-data-dir='+profile,'.',file],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();page.on('pageerror',error=>errors.push(error.message));await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000',{timeout:30000});await app.evaluate(({session,shell,dialog,nativeImage})=>{
+async function launch(){app=await launchWithoutTutorial({args:['--no-sandbox','--user-data-dir='+profile,'.',file],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();page.on('pageerror',error=>errors.push(error.message));await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000',{timeout:30000});await app.evaluate(({session,shell,dialog,nativeImage})=>{
   (globalThis as any).sNativeUrls=[];(globalThis as any).sDialogLog=[];(globalThis as any).sDialogResponse=0;shell.openExternal=async url=>{(globalThis as any).sNativeUrls.push(url);};dialog.showMessageBox=async(_window,options)=>{(globalThis as any).sDialogLog.push(options.title);return {response:(globalThis as any).sDialogResponse,checkboxChecked:false};};
   const bitmap=Buffer.alloc(24*24*4);for(let i=0;i<bitmap.length;i+=4){bitmap[i]=210;bitmap[i+1]=150;bitmap[i+2]=40;bitmap[i+3]=255;}const ownImage=nativeImage.createFromBitmap(bitmap,{width:24,height:24}).toPNG(),ownURL='data:image/png;base64,'+ownImage.toString('base64');for(let i=0;i<bitmap.length;i+=4){bitmap[i]=20;bitmap[i+1]=20;bitmap[i+2]=220;}const otherURL=nativeImage.createFromBitmap(bitmap,{width:24,height:24}).toDataURL();
   session.defaultSession.protocol.handle('https',request=>request.url.startsWith('https://www.googleapis.com/drive/v3/about')?new Response(JSON.stringify({user:{displayName:'API本人',photoLink:'https://lh3.googleusercontent.com/a/fixture'}}),{headers:{'Content-Type':'application/json'}}):request.url.startsWith('https://lh3.googleusercontent.com/')?new Response(ownImage,{headers:{'Content-Type':'image/png'}}):new Response('unavailable',{status:403}));

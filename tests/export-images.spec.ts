@@ -1,4 +1,5 @@
-import {test,expect,_electron as electron,type ElectronApplication,type Page} from '@playwright/test';
+import {launchWithoutTutorial} from './electron-profile';
+import {test,expect,type ElectronApplication,type Page} from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -9,7 +10,7 @@ test.beforeAll(async()=>{
   fs.mkdirSync(profile);fs.writeFileSync(path.join(profile,'preferences.json'),JSON.stringify({theme:'dark'}));
   const file=path.join(folder,'LongLabels.csv'),headers=['対象','長い名前の測定値（複数の期間と条件を比較した結果）'.repeat(2),'もう一つの長い名前の測定値（複数の条件を比較した結果）'.repeat(2),'成果スコア'];
   fs.writeFileSync(file,[headers.join(','),...Array.from({length:12},(_,i)=>['観測'+(i+1),i+1,i*3+7,i*i+2].join(','))].join('\n'));
-  app=await electron.launch({args:['--no-sandbox','--user-data-dir='+profile,'.',file],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();
+  app=await launchWithoutTutorial({args:['--no-sandbox','--user-data-dir='+profile,'.',file],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();
   await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1',{timeout:30000});await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
   await page.locator('[data-row="0"][data-col="1"]').click();await page.locator('[data-row="11"][data-col="3"]').click({modifiers:['Shift']});
 });

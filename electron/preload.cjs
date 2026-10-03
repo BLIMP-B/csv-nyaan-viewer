@@ -14,6 +14,8 @@ const onPaths = callback => {
 };
 contextBridge.exposeInMainWorld('csv', {
   icon:()=>ipcRenderer.invoke('csv:icon'),
+  tutorialSample:kind=>ipcRenderer.invoke('csv:tutorialSample',kind),
+  dockMinimum:size=>ipcRenderer.invoke('csv:dockMinimum',size),
   chooseIcon:()=>ipcRenderer.invoke('csv:chooseIcon'),
   openExternal: url => ipcRenderer.invoke('csv:openExternal', url),
   connections: () => ipcRenderer.invoke('csv:connections'),

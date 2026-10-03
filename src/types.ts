@@ -1,12 +1,13 @@
 export type Kind = 'csv' | 'text' | 'markdown' | 'excel';
-export interface Meta { sheets?:string[];sheet?:string;requestedHeaderRows?:number;excludedRows?:number[];sourceUrl?:string;name?:string;id: string; kind: Kind; path: string; size: number; encoding: string; delimiter: string; bom: number; records: number; columns: number; headerRows: number; headerRecords: string[][]; headers: string[]; count: number; lineEndings: string; warnings: string[] }
+export interface Meta { tutorial?:boolean;sheets?:string[];sheet?:string;requestedHeaderRows?:number;excludedRows?:number[];sourceUrl?:string;name?:string;id: string; kind: Kind; path: string; size: number; encoding: string; delimiter: string; bom: number; records: number; columns: number; headerRows: number; headerRecords: string[][]; headers: string[]; count: number; lineEndings: string; warnings: string[] }
 export interface Row { index: number; source: number; cells: string[] }
 export interface Filter { column: number; mode: string; value: string; caseSensitive?: boolean }
 export interface Sort { column: number; direction: string; mode: string }
 export interface Selection { row0: number; row1: number; col0: number; col1: number }
 export interface Tab { sheetViews?:Record<string,import('./analysis-types').SheetView>; selectionExplicit?:boolean; meta: Meta; filters: Filter[]; sorts: Sort[]; hidden: number[]; hiddenRows?:number[]; excludedRows?:number[]; deletedColumns?:number[]; columnOrder?:number[]; columnFilter?:number[]; frozen: number; widths: Record<number, number>; selection: Selection | null; ranges?: Selection[]; scrollTop: number; scrollLeft: number; preview: boolean }
 export interface PaneSize { width?: number; height?: number }
-export interface Preferences { dockLayout?:import('./dock-state').DockLayout; imageExportTheme?:import('./export-theme').ImageExportTheme; theme?: string; fontSize?: number; fontFamily?: string; accent?: string; previewPosition?: string; mergePosition?: string; dockSizes?: Partial<Record<'top'|'bottom'|'left'|'right', PaneSize>>; sidebarWidth?:number; recent?: string[] }
+export type TutorialRestore=Pick<Preferences,'dockLayout'|'dockRatios'|'dockSizes'|'sidebarWidth'>;
+export interface Preferences { tutorialRestore?:TutorialRestore|null;tutorialStatus?:'completed'|'skipped';dockRatios?:Partial<import('./dock-geometry').DockRatios>;dockLayout?:import('./dock-state').DockLayout; imageExportTheme?:import('./export-theme').ImageExportTheme; theme?: string; fontSize?: number; fontFamily?: string; accent?: string; previewPosition?: string; mergePosition?: string; dockSizes?: Partial<Record<'top'|'bottom'|'left'|'right', PaneSize>>; sidebarWidth?:number; recent?: string[] }
 declare global { interface Window { csv: {
   icon():Promise<string|null>;
   chooseIcon():Promise<string|null>;
@@ -27,6 +28,8 @@ declare global { interface Window { csv: {
   onAuth(callback:(info:{provider:string;code:string;url:string})=>void):()=>void;
   dialog(): Promise<string[]>;
   open(path: string, options?: Record<string, unknown>): Promise<Meta>;
+  tutorialSample(kind:'csv'|'markdown'|'text'):Promise<Meta>;
+  dockMinimum(size:{width:number;height:number}):Promise<void>;
   openUrl(url:string):Promise<Meta>;
   close(id: string): Promise<void>;
   cancel(): Promise<void>;

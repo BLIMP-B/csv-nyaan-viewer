@@ -1,10 +1,11 @@
-import {test,expect,_electron as electron,type ElectronApplication,type Page} from '@playwright/test';
+import {launchWithoutTutorial} from './electron-profile';
+import {test,expect,type ElectronApplication,type Page} from '@playwright/test';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 import {readableText} from './ui-contrast';
 const root=process.cwd(),profile=fs.mkdtempSync(path.join(os.tmpdir(),'csv-docking-')),file=path.join(root,'samples/sales.csv');
 let app:ElectronApplication,page:Page;const errors:string[]=[];
 test.describe.configure({mode:'serial'});
-async function launch(){app=await electron.launch({args:['--no-sandbox','--user-data-dir='+profile,'.',file],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000',{timeout:30000});}
+async function launch(){app=await launchWithoutTutorial({args:['--no-sandbox','--user-data-dir='+profile,'.',file],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000',{timeout:30000});}
 test.beforeAll(launch);test.afterAll(async()=>{await app.close();expect(errors).toEqual([]);});
 async function dropTab(id:string,position:string){const source=page.locator('#dock-tab-'+id);await source.scrollIntoViewIfNeeded();const start=(await source.boundingBox())!;await page.mouse.move(start.x+start.width/2,start.y+start.height/2);await page.mouse.down();await page.mouse.move(start.x+start.width/2+10,start.y+start.height/2+10);const target=page.locator('.dock-drop-zone.drop-'+position);await expect(target).toBeVisible();const end=(await target.boundingBox())!;await page.mouse.move(end.x+end.width/2,end.y+end.height/2,{steps:8});await page.mouse.up();await expect(page.locator('.dock-slot.'+position+' #dock-tab-'+id)).toHaveAttribute('aria-selected','true');}
 async function closeGroup(id:string){await page.locator('.dock-rail').filter({has:page.locator('#dock-tab-'+id)}).locator('.boundary-toggle').click();}

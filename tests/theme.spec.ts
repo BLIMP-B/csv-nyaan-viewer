@@ -1,4 +1,5 @@
-import {test,expect,_electron as electron,type ElectronApplication,type Page} from '@playwright/test';
+import {launchWithoutTutorial} from './electron-profile';
+import {test,expect,type ElectronApplication,type Page} from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,7 +9,7 @@ const root=process.cwd(),profile=fs.mkdtempSync(path.join(os.tmpdir(),'csv-theme
 let app:ElectronApplication,page:Page;
 test.describe.configure({mode:'serial'});
 test.beforeAll(async()=>{
-  app=await electron.launch({args:['--no-sandbox','--user-data-dir='+profile,'.',path.join(root,'samples/sales.csv')],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});
+  app=await launchWithoutTutorial({args:['--no-sandbox','--user-data-dir='+profile,'.',path.join(root,'samples/sales.csv')],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});
   page=await app.firstWindow();await expect(page.locator('[data-row="0"][data-col="1"]')).toHaveText('1200000',{timeout:30000});
 });
 test.afterAll(async()=>{await app.close();});

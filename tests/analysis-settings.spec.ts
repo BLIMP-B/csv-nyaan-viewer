@@ -1,4 +1,5 @@
-import {test,expect,_electron as electron,type ElectronApplication,type Page} from '@playwright/test';
+import {launchWithoutTutorial} from './electron-profile';
+import {test,expect,type ElectronApplication,type Page} from '@playwright/test';
 import {readableText} from './ui-contrast';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
 const XLSX=require('@e965/xlsx'),root=process.cwd(),out=fs.mkdtempSync(path.join(os.tmpdir(),'csv-profile-ui-')),target=path.join(out,'Generic.xlsx');
@@ -6,7 +7,7 @@ const book=XLSX.utils.book_new(),rows=[['店舗コード','年月','分類','Tem
 XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(rows),'Observations');XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(rows),'Copy');XLSX.writeFile(book,target);
 const original=fs.readFileSync(target);let app:ElectronApplication,page:Page;
 test.describe.configure({mode:'serial'});
-test.beforeAll(async()=>{app=await electron.launch({args:['--no-sandbox','--user-data-dir='+path.join(out,'profile'),'.',target],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();await expect(page.locator('[data-row="0"][data-col="3"]')).toHaveText('1',{timeout:30000});await page.getByLabel('左ペインを開閉').click();await page.getByRole('tab',{name:'多変量分析（ファイル全域）',exact:true}).click();await expect(page.locator('.analysis-pca')).toBeVisible();});
+test.beforeAll(async()=>{app=await launchWithoutTutorial({args:['--no-sandbox','--user-data-dir='+path.join(out,'profile'),'.',target],cwd:root,env:{...process.env,CSV_LENS_TEST:'1'}});page=await app.firstWindow();await expect(page.locator('[data-row="0"][data-col="3"]')).toHaveText('1',{timeout:30000});await page.getByLabel('左ペインを開閉').click();await page.getByRole('tab',{name:'多変量分析（ファイル全域）',exact:true}).click();await expect(page.locator('.analysis-pca')).toBeVisible();});
 test.afterAll(async()=>{await app.close();expect(fs.readFileSync(target)).toEqual(original);});
 test('自動判断の除外理由を確認し、列別チェックで使用・除外を変更して出力する',async()=>{
  await page.locator('.analysis-decisions summary').click();const id=page.getByLabel('店舗コードを分析に含める',{exact:true});await expect(id).not.toBeChecked();await expect(page.getByLabel('Temperatureを分析に含める',{exact:true})).toBeChecked();await id.check();await expect(id).toBeChecked();await expect(page.locator('.analysis-decisions')).toContainText('ユーザー設定');

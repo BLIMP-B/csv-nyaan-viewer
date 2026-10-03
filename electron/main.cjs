@@ -15,6 +15,7 @@ const profilePath=app.commandLine.getSwitchValue('user-data-dir');if(profilePath
 const settingsPath = () => path.join(app.getPath('userData'), 'preferences.json');
 function readSettings() { try { return JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch { return {}; } }
 function writeSettings(settings) { fs.mkdirSync(app.getPath('userData'), { recursive: true }); fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2)); }
+function restoreTutorialSettings(){const prefs=readSettings(),saved=prefs.tutorialRestore;if(!saved||typeof saved!=='object')return;for(const key of ['dockLayout','dockRatios','dockSizes','sidebarWidth'])if(key in saved)prefs[key]=saved[key];delete prefs.tutorialRestore;writeSettings(prefs);}
 function request(entry, method, args) {
   return new Promise((resolve, reject) => { const requestId = ++nextRequest; entry.pending.set(requestId, { resolve, reject }); entry.worker.postMessage({ requestId, method, args }); });
 }
@@ -33,11 +34,12 @@ async function openFile(filePath, options = {}) {
   worker.on('exit', code => { for (const p of entry.pending.values()) p.reject(new Error(`読み込み処理が終了しました (${code})。`)); entry.pending.clear(); });
   try {
     const meta = await request(entry, 'open', { path: filePath, options });
-    const prefs = readSettings(); if(!options.online)prefs.recent = [filePath, ...(prefs.recent || []).filter(p => p !== filePath)].slice(0, 15); writeSettings(prefs);
-    return { id, ...meta,...(entry.source?{sourceUrl:entry.source.sourceUrl,name:entry.source.name}:{}) };
+    const prefs = readSettings(); if(!options.online&&!options.tutorial)prefs.recent = [filePath, ...(prefs.recent || []).filter(p => p !== filePath)].slice(0, 15); writeSettings(prefs);
+    return { id, ...meta,...(options.tutorial?{tutorial:true}:{}),...(entry.source?{sourceUrl:entry.source.sourceUrl,name:entry.source.name}:{}) };
   } catch (error) { closeFile(id); throw error; }
 }
 app.whenReady().then(() => {
+  restoreTutorialSettings();
   nativeTheme.themeSource = readSettings().theme === 'dark' ? 'dark' : 'light';
   sharing.init(app.getPath('userData'));onlineCache=fs.mkdtempSync(path.join(app.getPath('temp'),'csv-nyaan-online-'));
   apiProfiles=require('./account-profiles.cjs').createApiProfiles({userData:app.getPath('userData'),accessToken:sharing.accessToken,fetch:net.fetch,nativeImage,connected:id=>!!sharing.status().providers[id]?.connected,notify:()=>emit('csv:connectionsChanged',connectionStatus())});
@@ -54,23 +56,25 @@ app.whenReady().then(() => {
     { label: '表示', submenu: [{ label: 'グラフプレビュー', click: send('preview') }, { label: 'ファイル結合ペイン', click: send('merge') }, { label: 'グラフを画像として保存', click: send('saveChart') }, { label: 'テーマを切り替え', accelerator: 'CmdOrCtrl+Shift+L', click: send('theme') }, { role: 'togglefullscreen', label: '全画面' }] },
     { label:'共有',submenu:[{label:'選択・文書を共有',click:send('share')}]},{label:'接続',submenu:[{label:'アカウント接続設定',click:send('connections')}]},
     {label:'S共有',submenu:[{label:'内部ブラウザで共有',click:send('sShare')}]},{label:'Sアカウント接続',submenu:[{label:'内部ブラウザのアカウント',click:send('sConnections')}]},
-    { label: 'ヘルプ', submenu: [{ label: '操作ガイド', accelerator: 'F1', click: send('help') }, { label: 'CSV nyaan Viewerについて', click: send('about') }] }
+    { label: 'ヘルプ', submenu: [{ label: '操作ガイド', accelerator: 'F1', click: send('help') }, {label:'クリックして学ぶチュートリアル',click:send('tutorial')},{ label: 'CSV nyaan Viewerについて', click: send('about') }] }
   ]));
   window.loadFile(path.join(__dirname, '../dist/index.html'));
   window.webContents.once('did-finish-load', () => {
     const paths = process.argv.slice(1).filter(arg => !arg.startsWith('-') && /\.(csv|tsv|txt|psv|md|xlsx|xls|xlsm|xlsb|xltx|xltm|xlt|xlam|xla|ods|fods|xml)$/i.test(arg));
     if (paths.length) emit('csv:paths', paths.map(p => path.resolve(p)));
   });
-  window.on('closed', () => { for (const id of files.keys()) closeFile(id); window = null; });
+  window.on('closed', () => { restoreTutorialSettings();for (const id of files.keys()) closeFile(id); window = null; });
 });
 ipcMain.handle('csv:dialog', async () => (await dialog.showOpenDialog(window, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'CSV / Excel / Markdown / Text', extensions: ['csv','tsv','txt','psv','md','xlsx','xls','xlsm','xlsb','xltx','xltm','xlt','xlam','xla','ods','fods','xml'] }, { name: 'すべてのファイル', extensions: ['*'] }] })).filePaths);
 ipcMain.handle('csv:openUrl',async(_,url)=>{const source=await openOnline(url,{fetch:net.fetch,accessToken:sharing.accessToken,cacheDir:onlineCache});try{return await openFile(source.path,{...source.options,online:true,source});}catch(error){try{fs.unlinkSync(source.path);}catch{}throw error;}});
 ipcMain.handle('csv:open', (_, args) => openFile(args.path, args.options));
+ipcMain.handle('csv:dockMinimum',(_,size)=>{if(!window||window.isDestroyed())return;if(!size||!Number.isFinite(size.width)||!Number.isFinite(size.height)||size.width<1000||size.width>2000||size.height<560||size.height>1200)throw Error('ウィンドウの最小サイズが不正です。');const outer=window.getBounds(),content=window.getContentBounds(),width=Math.ceil(size.width),height=Math.ceil(size.height);window.setMinimumSize(width+outer.width-content.width,height+outer.height-content.height);if(content.width<width||content.height<height)window.setContentSize(Math.max(content.width,width),Math.max(content.height,height));});
+ipcMain.handle('csv:tutorialSample',(_,kind)=>{const names={csv:'tutorial.csv',markdown:'tutorial.md',text:'tutorial.txt'};if(!Object.hasOwn(names,kind))throw Error('未対応の練習ファイルです。');return openFile(path.join(__dirname,'../assets',names[kind]),{tutorial:true});});
 ipcMain.handle('csv:close', (_, id) => closeFile(id));
 ipcMain.handle('csv:cancel', () => { for (const id of files.keys()) if (files.get(id).pending.size) closeFile(id); });
 ipcMain.handle('csv:request', (_, { id, method, args }) => { if (!['configure','page','find','copy','text','selection','excludeSelection','selectedSources','sortColumns','move','analyze','analysisSampleSheet','createTable'].includes(method)) throw new Error('未対応の操作です。'); const entry = files.get(id); if (!entry) throw new Error('ファイルが閉じられています。再度開いてください。'); return request(entry, method, args); });
 ipcMain.handle('csv:clipboard', (_, text) => { if (typeof text === 'string') clipboard.writeText(text); });
-ipcMain.handle('csv:preferences', (_, patch) => { const settings = readSettings(); if (patch && typeof patch === 'object') { if(patch.theme){nativeTheme.themeSource=patch.theme==='dark'?'dark':'light';window?.setBackgroundColor(nativeTheme.shouldUseDarkColors?'#292929':'#ffffff');} if(patch.theme&&window?.setTitleBarOverlay)window.setTitleBarOverlay({color:patch.theme==='dark'?'#242424':'#f5f5f5',symbolColor:patch.theme==='dark'?'#dedede':'#424242',height:34}); for (const key of ['theme','imageExportTheme','fontSize','fontFamily','accent','previewPosition','mergePosition','dockLayout','dockSizes','sidebarWidth']) if (key in patch) settings[key] = patch[key]; writeSettings(settings); } return settings; });
+ipcMain.handle('csv:preferences', (_, patch) => { const settings = readSettings(); if (patch && typeof patch === 'object') { if(patch.theme){nativeTheme.themeSource=patch.theme==='dark'?'dark':'light';window?.setBackgroundColor(nativeTheme.shouldUseDarkColors?'#292929':'#ffffff');} if(patch.theme&&window?.setTitleBarOverlay)window.setTitleBarOverlay({color:patch.theme==='dark'?'#242424':'#f5f5f5',symbolColor:patch.theme==='dark'?'#dedede':'#424242',height:34}); for (const key of ['theme','imageExportTheme','fontSize','fontFamily','accent','previewPosition','mergePosition','dockLayout','dockSizes','dockRatios','sidebarWidth','tutorialStatus','tutorialRestore']) if (key in patch) settings[key] = patch[key]; writeSettings(settings); } return settings; });
 ipcMain.handle('csv:reveal', (_, filePath) => shell.showItemInFolder(filePath));
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit',()=>{sBrowser?.dispose();if(onlineCache)try{fs.rmSync(onlineCache,{recursive:true,force:true});}catch{}});

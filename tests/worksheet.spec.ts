@@ -1,4 +1,5 @@
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import {launchWithoutTutorial} from './electron-profile';
+import { test, expect, type ElectronApplication, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,7 +17,7 @@ const errors: string[] = [];
 const cell = (r: number, c: number) => page.locator(`[data-row="${r}"][data-col="${c}"]`);
 const sheet = (i: number) => page.getByRole('tab', { name: names[i], exact: true });
 test.beforeAll(async () => {
-  app = await electron.launch({ args: ['--no-sandbox', '--user-data-dir=' + path.join(out, 'profile'), '.', file], cwd: root, env: { ...process.env, CSV_LENS_TEST: '1' } });
+  app = await launchWithoutTutorial({ args: ['--no-sandbox', '--user-data-dir=' + path.join(out, 'profile'), '.', file], cwd: root, env: { ...process.env, CSV_LENS_TEST: '1' } });
   page = await app.firstWindow(); page.on('pageerror', error => errors.push(error.message));
   await expect(cell(0, 0)).toHaveText('0001', { timeout: 30000 });
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1100, 640));
