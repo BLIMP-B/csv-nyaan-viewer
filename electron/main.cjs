@@ -68,7 +68,16 @@ app.whenReady().then(() => {
 ipcMain.handle('csv:dialog', async () => (await dialog.showOpenDialog(window, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'CSV / Excel / Markdown / Text', extensions: ['csv','tsv','txt','psv','md','xlsx','xls','xlsm','xlsb','xltx','xltm','xlt','xlam','xla','ods','fods','xml'] }, { name: 'すべてのファイル', extensions: ['*'] }] })).filePaths);
 ipcMain.handle('csv:openUrl',async(_,url)=>{const source=await openOnline(url,{fetch:net.fetch,accessToken:sharing.accessToken,cacheDir:onlineCache});try{return await openFile(source.path,{...source.options,online:true,source});}catch(error){try{fs.unlinkSync(source.path);}catch{}throw error;}});
 ipcMain.handle('csv:open', (_, args) => openFile(args.path, args.options));
-ipcMain.handle('csv:dockMinimum',(_,size)=>{if(!window||window.isDestroyed())return;if(!size||!Number.isFinite(size.width)||!Number.isFinite(size.height)||size.width<1000||size.width>2000||size.height<560||size.height>1200)throw Error('ウィンドウの最小サイズが不正です。');const outer=window.getBounds(),content=window.getContentBounds(),width=Math.ceil(size.width),height=Math.ceil(size.height);window.setMinimumSize(width+outer.width-content.width,height+outer.height-content.height);if(content.width<width||content.height<height)window.setContentSize(Math.max(content.width,width),Math.max(content.height,height));});
+ipcMain.handle('csv:dockMinimum',async(_,size)=>{
+  const target=window;if(!target||target.isDestroyed())return;
+  if(!size||!Number.isFinite(size.width)||!Number.isFinite(size.height)||size.width<1000||size.width>2000||size.height<560||size.height>1200)throw Error('ウィンドウの最小サイズが不正です。');
+  // Hidden Windows titlebars can include frame pixels in getContentBounds.
+  // Measure the renderer client area so the data minimum remains visible.
+  const client=await target.webContents.executeJavaScript('({width:innerWidth,height:innerHeight})');if(target.isDestroyed()||target!==window)return;
+  const outer=target.getBounds(),width=Math.ceil(size.width),height=Math.ceil(size.height),frameWidth=Math.max(0,outer.width-client.width),frameHeight=Math.max(0,outer.height-client.height);
+  target.setMinimumSize(width+frameWidth,height+frameHeight);
+  if(client.width<width||client.height<height)target.setSize(Math.max(outer.width,width+frameWidth),Math.max(outer.height,height+frameHeight));
+});
 ipcMain.handle('csv:tutorialSample',(_,kind)=>{const names={csv:'tutorial.csv',markdown:'tutorial.md',text:'tutorial.txt'};if(!Object.hasOwn(names,kind))throw Error('未対応の練習ファイルです。');return openFile(path.join(__dirname,'../assets',names[kind]),{tutorial:true});});
 ipcMain.handle('csv:close', (_, id) => closeFile(id));
 ipcMain.handle('csv:cancel', () => { for (const id of files.keys()) if (files.get(id).pending.size) closeFile(id); });
