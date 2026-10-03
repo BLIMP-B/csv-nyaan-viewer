@@ -14,13 +14,13 @@
 .workspace-content{display:flex;flex-direction:column;flex:1;min-height:0;padding:10px 8px;background:var(--surface)}
 .pane-content>.analysis-panel{flex:1;min-height:0;overflow:auto;padding:8px;background:var(--surface)}
 .pane-content:has(>.chart-viewport){overflow:auto}
-.dock-rail{position:absolute;z-index:20;display:grid;gap:0;background:var(--surface2);min-width:0;min-height:0}
-.rail-section{display:flex;align-items:stretch;gap:3px;min-width:0;min-height:0;overflow:auto;scrollbar-width:none;padding:0 1px}
-.rail-section::-webkit-scrollbar{display:none}.rail-section:first-child{justify-content:safe flex-end}.rail-section:last-child{justify-content:flex-start}
-.rail-left,.rail-right{top:9px;bottom:9px;width:28px;grid-template-rows:minmax(0,1fr) 26px minmax(0,1fr)}
+.dock-rail{position:absolute;z-index:20;display:flex;align-items:center;justify-content:safe center;background:var(--surface2);min-width:0;min-height:0}
+.rail-section{display:flex;flex:0 1 auto;align-items:stretch;gap:3px;min-width:0;min-height:0;max-width:100%;max-height:100%;overflow:auto;scrollbar-width:none;padding:0 1px}
+.rail-section::-webkit-scrollbar{display:none}
+.rail-left,.rail-right{top:9px;bottom:9px;width:28px;flex-direction:column}
 .rail-left{left:0}.rail-right{right:0}.rail-left.expanded{left:auto;right:0}.rail-right.expanded{right:auto;left:0}
 .rail-left .rail-section,.rail-right .rail-section{flex-direction:column;padding:1px 0}
-.rail-top,.rail-bottom{left:9px;right:9px;height:28px;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr)}
+.rail-top,.rail-bottom{left:9px;right:9px;height:28px}
 .rail-top{top:0}.rail-bottom{bottom:0}.rail-top.expanded{top:auto;bottom:0}.rail-bottom.expanded{bottom:auto;top:0}
 .dock-edge-tab,.boundary-toggle{display:flex;flex:0 1 auto;min-width:28px;min-height:26px;border:1px solid var(--line);border-radius:4px;background:var(--bg);padding:3px 5px;color:var(--text);font-size:10px;gap:0;box-shadow:none;touch-action:none}
 .dock-edge-tab.selected{border-color:var(--accent-text);background:var(--accent-soft);color:var(--accent-text);font-weight:600}

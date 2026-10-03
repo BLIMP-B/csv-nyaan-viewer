@@ -1,8 +1,8 @@
-Windows 10 / 11（x64）向け CSV nyaan Viewer 1.5.10です。
+Windows 10 / 11（x64）向け CSV nyaan Viewer 1.5.11です。
 
-Assetsの `CSV-nyaan-Viewer-1.5.10-Windows-x64.zip` をすべて展開して `CSV nyaan Viewer.exe` を起動してください。Node.jsは不要です。
+Assetsの `CSV-nyaan-Viewer-1.5.11-Windows-x64.zip` をすべて展開して `CSV nyaan Viewer.exe` を起動してください。Node.jsは不要です。
 
-- 多変量分析の「PCと色の見方」と「PC1・PC2・PC3とファイル処理・算出方法」を、グラフエリアの最下部、「主成分の負荷量」の下へ移動しました。2D・3Dともにこの順序で表示します。
+- ドット型つまみの削除後も境界のタブボタン間に残っていた余白を取り除きました。上下左右の各領域で、開閉アイコンとタブボタンをひと続きに並べます。展開中・最小化中・別ウィンドウでも同じ配置です。
 
 コア132件・Electron UI47件の全179件をWindowsで実行し、アイコンとAuthenticode署名を検証して配布します。
 
